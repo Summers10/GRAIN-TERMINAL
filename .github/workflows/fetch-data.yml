@@ -63,7 +63,10 @@ jobs:
         run: |
           git config user.name "github-actions"
           git config user.email "actions@github.com"
-          git add data/psd_data.json data/cftc_data.json data/export_sales.json data/export_sales_history.json data/weather_data.json
+          # add only files that exist (e.g. the seasonal file doesn't exist until the FAS key is set up) - a missing path would fail the step
+          for f in data/psd_data.json data/cftc_data.json data/export_sales.json data/export_sales_history.json data/export_sales_seasonal.json data/weather_data.json; do
+            if [ -f "$f" ]; then git add "$f"; fi
+          done
           if git diff --staged --quiet; then
             echo "No data changes to commit"
             exit 0
