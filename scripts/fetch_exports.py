@@ -354,6 +354,63 @@ def update_seasonal(result):
             print(f"::warning title=Seasonal export history::{pb}")
  
  
+# ---------------------------------------------------------------------------------------------------------------
+# USDA's own export projection per commodity (the "USDA target" on the seasonal chart)
+# ---------------------------------------------------------------------------------------------------------------
+PROJECTION_URL = "https://apps.fas.usda.gov/esrqs/StaticReports/CWRCommoditySummary.xml"
+ 
+ 
+def add_projections(result):
+    """The national summary report carries USDA's export estimate for each commodity's marketing year (the WASDE figure the
+    weekly report compares sales against), in MILLIONS of metric tons (cotton: millions of bales) while its other columns are
+    in thousands. Stored as total['usda_projection'] in the same units as everything else. A 0 means USDA publishes no
+    projection for that line (e.g. the individual wheat classes - only ALL WHEAT has one). Non-fatal: a problem here only means
+    no target line on the chart."""
+    problems, n = [], 0
+    try:
+        root = ET.fromstring(fetch_xml(PROJECTION_URL))
+        best = {}
+        for el in root.iter():
+            if not el.tag.endswith("Details"):
+                continue
+            a = el.attrib
+            name, key, v = (a.get("CommodityName") or "").strip().upper(), parse_period_date(a.get("PeriodEndingDate")), to_num(a.get("WASDEReportProjectionsQuantity"))
+            if name and key is not None and v is not None and (name not in best or key > best[name][0]):
+                best[name] = (key, v)
+        if not best:
+            raise ValueError("no usable <Details> records in the national summary report")
+        # plausibility: compare with the last completed marketing year's final shipments, when the seasonal file has them
+        last_final = {}
+        if os.path.exists(SEASONAL_OUT):
+            try:
+                with open(SEASONAL_OUT) as f:
+                    for nm, c in json.load(f).get("commodities", {}).items():
+                        labs = sorted(c.get("years", {}))
+                        if len(labs) >= 2 and c["years"][labs[-2]]["weeks"]:
+                            last_final[nm.upper()] = max(w["ae"] for w in c["years"][labs[-2]]["weeks"])
+            except Exception:
+                pass
+        for name, comm in result["commodities"].items():
+            hit = best.get(name.strip().upper())
+            if not hit or hit[1] <= 0:
+                continue
+            proj = int(round(hit[1] * 1_000_000))
+            ref = last_final.get(name.strip().upper())
+            if ref and not (0.25 <= proj / ref <= 4):
+                problems.append(f"{name}: USDA projection {proj:,} is implausible next to last year's final exports {ref:,} (units?) - not used")
+                continue
+            comm["total"]["usda_projection"] = proj
+            n += 1
+        print(f"USDA projections: {n} of {len(result['commodities'])} commodities have a projection (the rest have none published)")
+    except Exception as e:
+        problems.append(f"{type(e).__name__}: {e}")
+    if problems:
+        print("WARNING: USDA projections had problems (only the target line is affected):", file=sys.stderr)
+        for pb in problems:
+            print(f"  - {pb}", file=sys.stderr)
+            print(f"::warning title=USDA export projections::{pb}")
+ 
+ 
 def main():
     print(f"Fetching USDA FAS Export Sales (country-level) from {URL} ...")
     try:
@@ -546,6 +603,7 @@ def main():
               f"exports columns will be blank. Attributes on the first record: {sorted(sample_attrib.keys())}", file=sys.stderr)
         print("::warning title=Weekly exports field not found::see log for the attribute names present")
  
+    add_projections(result)
     update_history(result)
  
     result["_meta"] = {
