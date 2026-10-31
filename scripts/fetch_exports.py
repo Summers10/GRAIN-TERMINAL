@@ -9,6 +9,12 @@ This report auto-updates each week with the current and prior report week,
 and includes built-in prior-marketing-year comparison fields, so no
 historical accumulation is needed for a YoY view.
  
+Multi-year history for the seasonal charts lives in data/export_sales_seasonal.json. It was seeded once from USDA's own
+"Weekly Historical Data" report (national weekly totals by commodity, downloaded from the ESRQS site - no API), and this
+script adds each new week to it, from the weekly report it already fetches. A new week is only added if it reconciles
+with the week before it (change in total commitments = that week's net sales); anything that doesn't is skipped with a
+warning, so a bad week can never slip into the charts. The step is non-fatal.
+ 
 Note: the exact attribute names on this endpoint have not been directly
 confirmed (only the sibling CWRCommoditySummary.xml — national totals,
 no country breakdown — has been verified). This script is written
@@ -270,6 +276,84 @@ def update_history(result):
     print(f"History: {snapped} commodity snapshots saved this run; {len(keep)} weeks on file ({keep[0]} .. {keep[-1]})")
  
  
+# ---------------------------------------------------------------------------------------------------------------
+# Seasonal history: extend data/export_sales_seasonal.json with this week's national numbers
+# ---------------------------------------------------------------------------------------------------------------
+SEASONAL_OUT = os.path.join(REPO_ROOT, "data", "export_sales_seasonal.json")
+SEASONAL_KEEP_YEARS = 8
+_MONTHS = {m: i for i, m in enumerate(["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"], 1)}
+ 
+ 
+def _parse_my(s):
+    """'Sep 2026/Aug 2027' -> ('2026/27', 9): the label used in the seasonal file, and the month the year starts."""
+    m = re.match(r"\s*([A-Za-z]{3})[A-Za-z]*\s+(\d{4})\s*/\s*[A-Za-z]{3}[A-Za-z]*\s+(\d{4})", str(s or ""))
+    if not m or m.group(1).title() not in _MONTHS:
+        return None, None
+    return f"{m.group(2)}/{m.group(3)[-2:]}", _MONTHS[m.group(1).title()]
+ 
+ 
+def update_seasonal(result):
+    """Add this week's national totals to the seasonal file. NEVER raises: problems are printed loudly (and raised as an
+    Actions warning) and the file is left as it was for that commodity."""
+    if not os.path.exists(SEASONAL_OUT):
+        print("Seasonal history: no data/export_sales_seasonal.json yet - nothing to extend (the seasonal charts stay hidden).")
+        return
+    problems, added = [], []
+    try:
+        with open(SEASONAL_OUT) as f:
+            saved = json.load(f)
+        if not isinstance(saved.get("commodities"), dict):
+            raise ValueError("no 'commodities' object in the seasonal file")
+        for name, c in saved["commodities"].items():
+            comm = result["commodities"].get(name)
+            if not comm:
+                problems.append(f"{name}: not in this week's report - not extended")
+                continue
+            t = comm["total"]
+            label, start_month = _parse_my(t.get("mkt_year"))
+            iso, w = period_to_iso(t.get("period_ending")), t.get("mkt_year_week")
+            vals = [t.get(k) for k in ("net_sales", "weekly_exports", "outstanding_sales", "accumulated_exports")]
+            if not label or not iso or w is None or any(v is None for v in vals):
+                problems.append(f"{name}: this week's record is missing marketing year / week / a needed number (year={t.get('mkt_year')!r}, week={w!r}, values={vals}) - not extended")
+                continue
+            if start_month != c.get("start_month"):
+                problems.append(f"{name}: this week's marketing year '{t.get('mkt_year')}' starts in month {start_month}, the seasonal file expects {c.get('start_month')} - not extended")
+                continue
+            w = int(round(w))
+            ns, ex, os_, ae = (int(round(v)) for v in vals)
+            row = {"w": w, "d": iso, "ns": ns, "ex": ex, "os": os_, "ae": ae, "tc": ae + os_}
+            weeks = c["years"].setdefault(label, {"weeks": []})["weeks"]
+            have = next((x for x in weeks if x["w"] == w), None)
+            if have:                                       # already there (the seed, or an earlier run this week): must agree
+                off = [k for k in ("ns", "ex", "os", "ae", "tc") if abs(have[k] - row[k]) > max(0.005 * abs(have[k]), 100)]
+                if off:
+                    problems.append(f"{name} {label} week {w}: this week's report differs from the saved figures on {off} "
+                                    f"(saved {[have[k] for k in off]}, report {[row[k] for k in off]}) - saved figures kept")
+                continue
+            prev = next((x for x in weeks if x["w"] == w - 1), None)
+            if prev and abs((row["tc"] - prev["tc"]) - row["ns"]) > max(0.002 * abs(row["tc"]), 1000):
+                problems.append(f"{name} {label} week {w}: total commitments moved {row['tc'] - prev['tc']:,} but net sales were {row['ns']:,} (week {w - 1} is on file) - week not added")
+                continue
+            if not prev and w > 1 and weeks:
+                print(f"    {name} {label}: week {w - 1} is not on file (a report was missed) - adding week {w} without the week-to-week check")
+            weeks.append(row); weeks.sort(key=lambda x: x["w"])
+            added.append(f"{name} {label} wk{w}")
+            for lab in sorted(c["years"])[:-SEASONAL_KEEP_YEARS]:
+                del c["years"][lab]
+        if added:
+            saved.setdefault("_meta", {})["extended_at"] = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
+            with open(SEASONAL_OUT, "w") as f:
+                json.dump(saved, f, separators=(",", ":"))
+        print(f"Seasonal history: {len(added)} of {len(saved['commodities'])} commodities extended this run" + (f" ({', '.join(added[:3])}{'...' if len(added) > 3 else ''})" if added else " (already up to date)"))
+    except Exception as e:
+        problems.append(f"{type(e).__name__}: {e}")
+    if problems:
+        print("WARNING: seasonal history had problems (the rest of the Exports data is unaffected):", file=sys.stderr)
+        for pb in problems:
+            print(f"  - {pb}", file=sys.stderr)
+            print(f"::warning title=Seasonal export history::{pb}")
+ 
+ 
 def main():
     print(f"Fetching USDA FAS Export Sales (country-level) from {URL} ...")
     try:
@@ -479,6 +563,10 @@ def main():
         t = data['total']
         print(f"  {name}: {len(data['countries'])} countries, MY={t['mkt_year']}, period ending={t['period_ending']}, YTD accum exports={t['accumulated_exports']:,.0f} MT")
     print(f"\nSaved {OUT} ({size:,} bytes)")
+ 
+    print("\nSeasonal history...")
+    update_seasonal(result)
+ 
  
  
 if __name__ == "__main__":
