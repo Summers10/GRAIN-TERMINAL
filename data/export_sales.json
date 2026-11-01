@@ -3387,8 +3387,7 @@
         "prev_yr_total_commitment": 16299111.0,
         "yoy_accum_exports_pct": -32.135258212410484,
         "yoy_outstanding_sales_pct": -23.035574897233516,
-        "yoy_total_commitment_pct": -29.33011499829653,
-        "usda_projection": 20410000
+        "yoy_total_commitment_pct": -29.33011499829653
       }
     },
     "CORN - UNMILLED": {
@@ -4161,8 +4160,7 @@
         "prev_yr_total_commitment": 35365562.0,
         "yoy_accum_exports_pct": -5.4911051154407815,
         "yoy_outstanding_sales_pct": -45.71138869850831,
-        "yoy_total_commitment_pct": -33.56076173764749,
-        "usda_projection": 83830000
+        "yoy_total_commitment_pct": -33.56076173764749
       }
     },
     "SOYBEANS": {
@@ -4903,8 +4901,7 @@
         "prev_yr_total_commitment": 15947886.0,
         "yoy_accum_exports_pct": 45.11793702532154,
         "yoy_outstanding_sales_pct": 105.0042562164728,
-        "yoy_total_commitment_pct": 80.44838043111169,
-        "usda_projection": 46130000
+        "yoy_total_commitment_pct": 80.44838043111169
       }
     },
     "SOYBEAN CAKE AND MEAL": {
@@ -5725,8 +5722,7 @@
         "prev_yr_total_commitment": 6334642.0,
         "yoy_accum_exports_pct": 7.871569857914586,
         "yoy_outstanding_sales_pct": -6.6180275655334615,
-        "yoy_total_commitment_pct": -4.323511889069659,
-        "usda_projection": 20590000
+        "yoy_total_commitment_pct": -4.323511889069659
       }
     },
     "SOYBEAN OIL": {
@@ -6035,8 +6031,7 @@
         "prev_yr_total_commitment": 161721.0,
         "yoy_accum_exports_pct": -65.18686027136395,
         "yoy_outstanding_sales_pct": -78.8892952517648,
-        "yoy_total_commitment_pct": -77.46551159094984,
-        "usda_projection": 180000
+        "yoy_total_commitment_pct": -77.46551159094984
       }
     },
     "ALL UPLAND COTTON": {
@@ -6537,13 +6532,12 @@
         "prev_yr_total_commitment": 4879349.0,
         "yoy_accum_exports_pct": 21.330096011927395,
         "yoy_outstanding_sales_pct": 13.387451998040659,
-        "yoy_total_commitment_pct": 16.106062509568385,
-        "usda_projection": 11550000
+        "yoy_total_commitment_pct": 16.106062509568385
       }
     }
   },
   "_meta": {
-    "fetched_at": "2026-10-31T23:07:04Z",
+    "fetched_at": "2026-11-01T13:38:58Z",
     "source": "https://apps.fas.usda.gov/esrqs/StaticReports/CWRCountryCommoditySummary.xml"
   }
 }
