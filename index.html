@@ -787,10 +787,6 @@ fetch('data/psd_data.json?_=' + Date.now())
 .cftc-legend .lg-g{background:rgba(46,143,82,.35)}
 .cftc-legend .lg-r{background:rgba(192,57,43,.35)}
 .cftc-legend .lg-dash{width:18px;height:0;border-top:1.5px dashed var(--ref-color)}
-.cftc-legend .lg-last{width:18px;height:0;border-top:1.6px solid var(--text3)}
-.cftc-legend .lg-tgt{width:18px;height:0;border-top:2px dotted var(--text)}
-.cftc-legend .lg-band{width:14px;height:10px;background:rgba(132,150,189,.25)}
-.cftc-legend .lg-a{background:rgba(245,166,35,.55)}
 .rf{display:inline-block;min-width:66px;text-align:right}
 .rp{display:inline-block;min-width:44px;margin-left:6px;text-align:right;font-size:10px;font-weight:600;opacity:.85}
 .cftc-table td.cftc-ref{color:var(--ref-color);font-style:italic;font-weight:600;background:var(--ref-bg)}
@@ -2059,8 +2055,6 @@ let EXPORTS_DATA = null;
 let exportsCommodity = null;
 let exportsView = 'wow';     // 'country' | 'wow' - opens on Week over Week
 let EXPORTS_HISTORY = null;      // weekly snapshots kept by fetch_exports.py (needed for week-over-week)
-let EXPORTS_SEASONAL = null;     // multi-year weekly national totals from USDA's ESR API (for the seasonal charts)
-let expChartMode = 'commit';     // the one seasonal chart: 'commit' (cumulative total commitments + weekly net sales bars) | 'sales' (weekly net sales vs the norm)
 
 function expFmt(v){ return (v===null||v===undefined||isNaN(v)) ? '—' : Math.round(v).toLocaleString(); }
 function expSignedPct(v){
@@ -2184,212 +2178,6 @@ function buildExportsCountryTable(commName){
   return html;
 }
 
-// ---------------- SEASONAL EXPORT CHARTS ----------------
-// Data: EXPORTS_SEASONAL.commodities[name].years["2026/27"].weeks = [{w, d, ns, ex, os, ae, tc}], w = week of the marketing year.
-// Current year = the newest one; the comparison set = up to 5 years before it.
-function expSeasonalSeries(commName){
-  const c = EXPORTS_SEASONAL && EXPORTS_SEASONAL.commodities && EXPORTS_SEASONAL.commodities[commName];
-  if(!c || !c.years) return null;
-  const labels = Object.keys(c.years).sort();
-  if(!labels.length) return null;
-  const cur = labels[labels.length - 1], prior = labels.slice(0, -1).slice(-5);
-  const byW = lab => { const m = {}; c.years[lab].weeks.forEach(w=>{ m[w.w] = w; }); return m; };
-  return {cur, prior, last: prior.length ? prior[prior.length - 1] : null, curW: byW(cur), priorW: prior.map(byW), lastW: prior.length ? byW(prior[prior.length - 1]) : {},
-          startMonth: c.start_month || 1, curWeeks: c.years[cur].weeks};
-}
-// average / min / max of the prior years for each marketing-year week (needs at least 2 years with that week)
-function expEnvelope(S, field, maxW){
-  const out = [];
-  for(let w = 1; w <= maxW; w++){
-    const v = S.priorW.map(m=>m[w] ? m[w][field] : null).filter(x=>x !== null && x !== undefined);
-    out.push(v.length >= 2 ? {w, avg: v.reduce((a, b)=>a + b, 0) / v.length, min: Math.min(...v), max: Math.max(...v), n: v.length} : {w, avg:null, min:null, max:null, n: v.length});
-  }
-  return out;
-}
-function expVs(cur, ref){
-  if(cur === null || cur === undefined || ref === null || ref === undefined || !ref) return '—';
-  const p = (cur / ref - 1) * 100;
-  return (p >= 0 ? '+' : '') + p.toFixed(1) + '%';
-}
-function expCompactNum(v){ const a = Math.abs(v); return a >= 1e6 ? (v / 1e6).toFixed(2) + 'M' : a >= 1e3 ? Math.round(v / 1e3).toLocaleString() + 'k' : String(Math.round(v)); }
-
-// shared axes: x = marketing-year week (labelled by month). y labels sit on the right when the chart has a second (left) scale for bars.
-function expAxes(S, xmax, lo, hi, right){
-  const W = 1300, H = 370, M = right ? {l:62, r:80, t:14, b:32} : {l:70, r:30, t:14, b:32};
-  const plotW = W - M.l - M.r, plotH = H - M.t - M.b, step = plotW / xmax;
-  const y = v => M.t + (hi - v) / (hi - lo) * plotH, x = w => M.l + (w - 0.5) * step;
-  let svg = `<svg viewBox="0 0 ${W} ${H}" width="100%" style="display:block;max-width:100%;font-family:inherit" role="img">`;
-  cftcNiceTicks(lo, hi, 6).forEach(t=>{
-    svg += `<line x1="${M.l}" x2="${M.l + plotW}" y1="${y(t)}" y2="${y(t)}" style="stroke:var(--border);stroke-width:1"/>`;
-    svg += right ? `<text x="${M.l + plotW + 8}" y="${y(t) + 4}" text-anchor="start" style="fill:var(--text3);font-size:11px">${cftcAxisFmt(t, false)}</text>`
-                 : `<text x="${M.l - 8}" y="${y(t) + 4}" text-anchor="end" style="fill:var(--text3);font-size:11px">${cftcAxisFmt(t, false)}</text>`;
-  });
-  const MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  for(let k = 0; k < 12; k++){
-    const w = Math.round(k * 30.4375 / 7) + 1;
-    if(w > xmax) break;
-    svg += `<line x1="${x(w)}" x2="${x(w)}" y1="${M.t + plotH}" y2="${M.t + plotH + 5}" style="stroke:var(--text3)"/>`;
-    svg += `<text x="${x(w)}" y="${H - 10}" text-anchor="middle" style="fill:var(--text3);font-size:11px">${MON[(S.startMonth - 1 + k) % 12]}</text>`;
-  }
-  return {W, H, M, plotW, plotH, step, x, y, svg};
-}
-// min-max band across contiguous weeks that have data
-function expBandPath(env, x, y){
-  let d = '', seg = [];
-  const flush = ()=>{ if(seg.length > 1) d += 'M' + seg.map(p=>`${x(p.w).toFixed(1)},${y(p.max).toFixed(1)}`).join('L') + 'L' + seg.slice().reverse().map(p=>`${x(p.w).toFixed(1)},${y(p.min).toFixed(1)}`).join('L') + 'Z'; seg = []; };
-  env.forEach(p=>{ if(p.avg === null) flush(); else seg.push(p); });
-  flush();
-  return d;
-}
-function expLinePoints(pts, x, y){ return pts.map(p=>`${x(p.w).toFixed(1)},${y(p.v).toFixed(1)}`).join(' '); }
-
-function expChartHeader(title, readout, toggleHtml, legendHtml){
-  return `<div class="cftc-chart-hdr" style="margin-top:6px"><div class="cftc-chart-title"><span>${title}<small>${readout}</small></span></div>${toggleHtml}<div class="cftc-legend">${legendHtml}</div></div>`;
-}
-function expToggle(cls, items, active){
-  return `<div class="toggle">${items.map(([v, t])=>`<button class="tbtn ${cls}${v === active ? ' active' : ''}" data-v="${v}">${t}</button>`).join('')}</div>`;
-}
-const expToggleHtml = ()=> expToggle('exp-chart-mode', [['commit', 'Commitments'], ['sales', 'Net sales']], expChartMode);
-
-// Cumulative total commitments by marketing-year week: this year (markers), last year, the prior-years average and range, USDA's
-// target, with this year's weekly net sales as bars on a separate left-hand scale and a comparison box.
-function buildExpCommitChart(S, proj){
-  const maxW = Math.min(53, Math.max(...S.curWeeks.map(w=>w.w), ...S.priorW.map(m=>Math.max(...Object.keys(m).map(Number), 0)), 1));
-  const env = expEnvelope(S, 'tc', maxW);
-  const cur = S.curWeeks.map(w=>({w:w.w, v:w.tc})), last = Object.values(S.lastW).sort((a, b)=>a.w - b.w).map(w=>({w:w.w, v:w.tc})).filter(p=>p.w <= maxW);
-  const unit = /COTTON/.test(exportsCommodity) ? 'bales' : 'MT';
-  let hi = 0;
-  cur.forEach(p=>{ hi = Math.max(hi, p.v); }); last.forEach(p=>{ hi = Math.max(hi, p.v); }); env.forEach(p=>{ if(p.max !== null) hi = Math.max(hi, p.max); });
-  if(proj) hi = Math.max(hi, proj * 1.04);
-  hi *= 1.05; if(!hi) hi = 1;
-  const A = expAxes(S, maxW, 0, hi, true), {x, y, M, plotW, plotH, step} = A;
-  let svg = A.svg;
-
-  // weekly net sales: bars on their own scale (left), using the lower ~40% of the plot; room below their zero line for negative weeks
-  const ns = S.curWeeks.map(w=>w.ns), maxNs = Math.max(0, ...ns), minNs = Math.min(0, ...ns), k = (0.4 * plotH) / ((maxNs - minNs) || 1);
-  const yb = M.t + plotH + minNs * k, by = v => yb - v * k;
-  const bw = Math.max(2, Math.min(step * 0.7, 18));
-  S.curWeeks.forEach(w=>{
-    const top = Math.min(by(w.ns), yb), h = Math.abs(by(w.ns) - yb);
-    svg += `<rect x="${(x(w.w) - bw / 2).toFixed(1)}" y="${top.toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}" style="fill:${w.ns < 0 ? '#c0392b' : 'var(--amber)'};fill-opacity:.38"/>`;
-  });
-  cftcNiceTicks(minNs, maxNs, 3).forEach(t=>{
-    svg += `<text x="${M.l - 8}" y="${by(t) + 4}" text-anchor="end" style="fill:var(--amber);fill-opacity:.85;font-size:10.5px">${cftcAxisFmt(t, false)}</text>`;
-  });
-
-  svg += `<path d="${expBandPath(env, x, y)}" style="fill:var(--ref-color);fill-opacity:.13;stroke:none"/>`;
-  const avgPts = env.filter(p=>p.avg !== null).map(p=>({w:p.w, v:p.avg}));
-  if(avgPts.length > 1) svg += `<polyline fill="none" points="${expLinePoints(avgPts, x, y)}" style="stroke:var(--ref-color);stroke-width:2;stroke-dasharray:6 5"/>`;
-  if(last.length > 1) svg += `<polyline fill="none" points="${expLinePoints(last, x, y)}" style="stroke:var(--text3);stroke-width:1.6;stroke-linejoin:round"/>`;
-  if(cur.length > 1) svg += `<polyline fill="none" points="${expLinePoints(cur, x, y)}" style="stroke:var(--amber);stroke-width:2.6;stroke-linejoin:round"/>`;
-  cur.forEach(p=>{ svg += `<circle cx="${x(p.w).toFixed(1)}" cy="${y(p.v).toFixed(1)}" r="3.2" style="fill:var(--amber)"/>`; });
-
-  // USDA's own export projection for the year: a dotted line across the right-hand part of the plot
-  if(proj){
-    const x0 = M.l + plotW * 0.7;
-    svg += `<line x1="${x0}" x2="${M.l + plotW}" y1="${y(proj)}" y2="${y(proj)}" style="stroke:var(--text);stroke-width:1.8;stroke-dasharray:2 4"/>`;
-    svg += `<text x="${x0}" y="${y(proj) - 6}" text-anchor="start" style="fill:var(--text);font-size:11px;font-weight:800">USDA target ${expCompactNum(proj)}</text>`;
-  }
-  // direct labels at the right-hand end of the lines, drawn inside the plot: above the higher line, below the lower one (so they
-  // never meet each other or the axis numbers)
-  const lw = cur[cur.length - 1], ends = [];
-  if(last.length > 1) ends.push({t:S.last, c:'var(--text3)', y:y(last[last.length - 1].v)});
-  if(avgPts.length > 1) ends.push({t:`${S.prior.length}-yr avg`, c:'var(--ref-color)', y:y(avgPts[avgPts.length - 1].v)});
-  ends.sort((a, b)=>a.y - b.y);
-  ends.forEach((l, i)=>{ svg += `<text x="${M.l + plotW - 4}" y="${i === 0 ? l.y - 7 : l.y + 15}" text-anchor="end" style="fill:${l.c};font-size:11px;font-weight:700">${l.t}</text>`; });
-  svg += `<text x="${x(lw.w) + 9}" y="${y(lw.v) - 8}" style="fill:var(--amber);font-size:11.5px;font-weight:800">${S.cur}</text>`;
-
-  // comparison box (top-left), as in the reference chart
-  const e = env[lw.w - 1] || {}, lastV = S.lastW[lw.w] ? S.lastW[lw.w].tc : null;
-  const dl = (a, b)=> (b === null || b === undefined || !b) ? null : `${a - b >= 0 ? '+' : '-'}${expCompactNum(Math.abs(a - b))} ${unit} or ${(a / b - 1) * 100 >= 0 ? '+' : ''}${((a / b - 1) * 100).toFixed(0)}%`;
-  const rows = [`Cumulative ${S.cur} (week ${lw.w}): ${expCompactNum(lw.v)} ${unit}`];
-  if(dl(lw.v, lastV)) rows.push(`${dl(lw.v, lastV)} vs ${S.last}`);
-  if(e.avg !== null && e.avg !== undefined && dl(lw.v, e.avg)) rows.push(`${dl(lw.v, e.avg)} vs ${e.n}-yr avg`);
-  if(proj) rows.push(`${(lw.v / proj * 100).toFixed(0)}% of USDA's ${expCompactNum(proj)} target`);
-  const bx = M.l + 12, byy = M.t + 10, bwid = 330, bh = rows.length * 17 + 12;
-  svg += `<rect x="${bx}" y="${byy}" width="${bwid}" height="${bh}" rx="3" style="fill:var(--bg);fill-opacity:.92;stroke:var(--border2)"/>`;
-  rows.forEach((t, i)=>{ svg += `<text x="${bx + 10}" y="${byy + 20 + i * 17}" style="fill:${i === 0 ? 'var(--amber)' : 'var(--text)'};font-size:12px;font-weight:${i === 0 ? 800 : 700}">${t}</text>`; });
-  svg += `<g class="exp-hover" pointer-events="none"></g><rect class="exp-hit" x="${M.l}" y="${M.t}" width="${plotW}" height="${plotH}" fill="transparent"/></svg>`;
-
-  const readout = `Week ${lw.w} (${S.curW[lw.w].d}) · ${expCompactNum(lw.v)} ${unit} committed`;
-  const legend = `<span><i class="lg-line"></i>${S.cur}</span>` + (S.last ? `<span><i class="lg-last"></i>${S.last}</span>` : '')
-    + (S.prior.length >= 2 ? `<span><i class="lg-dash"></i>${S.prior.length}-yr avg</span><span><i class="lg-band"></i>min–max</span>` : '')
-    + `<span><i class="lg-bar lg-a"></i>Weekly net sales (left scale)</span>` + (proj ? `<span><i class="lg-tgt"></i>USDA target</span>` : '');
-  return {html: expChartHeader('Total commitments — cumulative, by marketing-year week', readout, expToggleHtml(), legend) + svg,
-          hover: {A, maxW, rows: p=>[S.curW[p] ? `${S.cur}  ${expCompactNum(S.curW[p].tc)}` : null, S.lastW[p] ? `${S.last}  ${expCompactNum(S.lastW[p].tc)}` : null,
-                  env[p - 1] && env[p - 1].avg !== null ? `${env[p - 1].n}-yr avg  ${expCompactNum(env[p - 1].avg)}` : null, env[p - 1] && env[p - 1].avg !== null ? `range  ${expCompactNum(env[p - 1].min)} – ${expCompactNum(env[p - 1].max)}` : null,
-                  S.curW[p] ? `Net sales  ${S.curW[p].ns > 0 ? '+' : ''}${expCompactNum(S.curW[p].ns)}` : null],
-                  dateOf: p=>S.curW[p] ? S.curW[p].d : null, yOf: p=>S.curW[p] ? S.curW[p].tc : null}};
-}
-
-// Weekly net sales: this year's bars against the prior years' average and range for the same marketing-year weeks.
-function buildExpSalesChart(S){
-  const maxW = Math.min(53, Math.max(...S.curWeeks.map(w=>w.w), ...S.priorW.map(m=>Math.max(...Object.keys(m).map(Number), 0)), 1));
-  const env = expEnvelope(S, 'ns', maxW);
-  let lo = 0, hi = 0;
-  S.curWeeks.forEach(w=>{ lo = Math.min(lo, w.ns); hi = Math.max(hi, w.ns); });
-  env.forEach(p=>{ if(p.max !== null){ hi = Math.max(hi, p.max); lo = Math.min(lo, p.min); } });
-  const pad = (hi - lo) * 0.06 || 1; hi += pad; if(lo < 0) lo -= pad;
-  const A = expAxes(S, maxW, lo, hi, false), {x, y, M, plotW, plotH, step} = A;
-  let svg = A.svg;
-  svg += `<path d="${expBandPath(env, x, y)}" style="fill:var(--ref-color);fill-opacity:.13;stroke:none"/>`;
-  svg += `<line x1="${M.l}" x2="${M.l + plotW}" y1="${y(0)}" y2="${y(0)}" style="stroke:var(--text3);stroke-width:1"/>`;
-  const bw = Math.max(2, Math.min(step * 0.7, 18));
-  S.curWeeks.forEach(w=>{
-    const top = Math.min(y(w.ns), y(0)), h = Math.abs(y(w.ns) - y(0));
-    svg += `<rect x="${(x(w.w) - bw / 2).toFixed(1)}" y="${top.toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}" style="fill:var(--amber);fill-opacity:.55"/>`;
-  });
-  const avgPts = env.filter(p=>p.avg !== null).map(p=>({w:p.w, v:p.avg}));
-  if(avgPts.length > 1) svg += `<polyline fill="none" points="${expLinePoints(avgPts, x, y)}" style="stroke:var(--ref-color);stroke-width:2;stroke-dasharray:6 5"/>`;
-  svg += `<g class="exp-hover" pointer-events="none"></g><rect class="exp-hit" x="${M.l}" y="${M.t}" width="${plotW}" height="${plotH}" fill="transparent"/></svg>`;
-  // last 4 reported weeks vs the prior-years average for the same weeks
-  const tail = S.curWeeks.slice(-4), avgTail = tail.map(w=>env[w.w - 1] && env[w.w - 1].avg !== null ? env[w.w - 1].avg : null);
-  const sum = a=>a.reduce((t, v)=>t + v, 0);
-  const readout = avgTail.every(v=>v !== null) && tail.length ? `Last ${tail.length} weeks: ${expCompactNum(sum(tail.map(w=>w.ns)) / tail.length)}/wk · ${expVs(sum(tail.map(w=>w.ns)), sum(avgTail))} vs the ${S.prior.length}-yr avg for the same weeks`
-                                                              : `${S.cur} by marketing-year week`;
-  const legend = `<span><i class="lg-bar lg-a"></i>${S.cur}</span>` + (S.prior.length >= 2 ? `<span><i class="lg-dash"></i>${S.prior.length}-yr avg</span><span><i class="lg-band"></i>min–max</span>` : '');
-  return {html: expChartHeader('Weekly net sales vs the seasonal norm', readout, expToggleHtml(), legend) + svg,
-          hover: {A, maxW, rows: p=>[S.curW[p] ? `${S.cur}  ${expCompactNum(S.curW[p].ns)}` : null, env[p - 1] && env[p - 1].avg !== null ? `${env[p - 1].n}-yr avg  ${expCompactNum(env[p - 1].avg)}` : null,
-                  env[p - 1] && env[p - 1].avg !== null ? `range  ${expCompactNum(env[p - 1].min)} – ${expCompactNum(env[p - 1].max)}` : null],
-                  dateOf: p=>S.curW[p] ? S.curW[p].d : null, yOf: p=>S.curW[p] ? S.curW[p].ns : null}};
-}
-
-function wireExpChartHover(svgEl, h){
-  const {A, maxW} = h, hit = svgEl.querySelector('.exp-hit'), g = svgEl.querySelector('.exp-hover');
-  hit.addEventListener('mousemove', ev=>{
-    const r = svgEl.getBoundingClientRect(), px = (ev.clientX - r.left) * (A.W / r.width);
-    const w = Math.max(1, Math.min(maxW, Math.floor((px - A.M.l) / A.step) + 1)), X = A.x(w);
-    const rows = [`Marketing-year week ${w}${h.dateOf(w) ? ' · ' + h.dateOf(w) : ''}`, ...h.rows(w).filter(Boolean)];
-    const tw = 250, th = rows.length * 16 + 12, tx = X > A.M.l + A.plotW / 2 ? X - tw - 12 : X + 12, ty = A.M.t + 8;
-    const yy = h.yOf(w);
-    g.innerHTML = `<line x1="${X}" x2="${X}" y1="${A.M.t}" y2="${A.M.t + A.plotH}" style="stroke:var(--text3);stroke-width:1;stroke-dasharray:3 3"/>`
-      + (yy !== null ? `<circle cx="${X}" cy="${A.y(yy)}" r="4" style="fill:var(--amber)"/>` : '')
-      + `<rect x="${tx}" y="${ty}" width="${tw}" height="${th}" rx="3" style="fill:var(--bg);stroke:var(--border2)"/>`
-      + rows.map((t, k)=>`<text x="${tx + 10}" y="${ty + 20 + k * 16}" xml:space="preserve" style="fill:${k === 0 ? 'var(--amber)' : 'var(--text)'};font-size:11.5px;font-weight:${k === 0 ? 800 : 600}">${t.replace(/ /g, '\u00a0')}</text>`).join('');
-  });
-  hit.addEventListener('mouseleave', ()=>{ g.innerHTML = ''; });
-}
-
-function renderExportsCharts(){
-  const box = document.getElementById('exports-charts');
-  if(!box || !EXPORTS_DATA) return;
-  const S = expSeasonalSeries(exportsCommodity);
-  const head = `<div class="cftc-row-section" style="padding:8px 10px;border-top:2px solid var(--amber);color:var(--amber);font-weight:900;text-transform:uppercase;letter-spacing:.16em;font-size:13px;margin:30px 0 0">Seasonal Pace — ${exportsCommodity}</div>`;
-  if(!S){
-    // no seasonal file yet -> show nothing (no empty placeholder on the page); if the file exists but lacks this commodity, say so
-    box.innerHTML = EXPORTS_SEASONAL ? head + `<div style="padding:22px 4px;color:var(--text3);font-size:13px">No seasonal history on file for this commodity yet.</div>` : '';
-    return;
-  }
-  const t = EXPORTS_DATA.commodities && EXPORTS_DATA.commodities[exportsCommodity] ? EXPORTS_DATA.commodities[exportsCommodity].total : null;
-  const proj = t && t.usda_projection > 0 ? t.usda_projection : null;
-  const chart = expChartMode === 'sales' ? buildExpSalesChart(S) : buildExpCommitChart(S, proj);
-  const note = expChartMode === 'sales' ? '' : ` Bars (left scale) = ${S.cur} weekly net sales.${proj ? ' Target = USDA\'s export projection for the year.' : ''}`;
-  box.innerHTML = head + `<div style="margin-top:14px">${chart.html}</div>`
-    + `<div style="font-size:11px;color:var(--text3);margin-top:10px">Marketing-year weeks (week 1 = first report of the year). Average and band = the ${S.prior.length} marketing year${S.prior.length === 1 ? '' : 's'} before ${S.cur}; ${S.prior.length < 3 ? 'few years on file yet, so treat the average with care. ' : ''}units: metric tons${/COTTON/.test(exportsCommodity) ? ' (cotton: bales)' : ''}.${note}</div>`;
-  wireExpChartHover(box.querySelector('svg'), chart.hover);
-  box.querySelectorAll('.exp-chart-mode').forEach(b=>b.addEventListener('click', ()=>{ expChartMode = b.dataset.v; renderExportsCharts(); }));
-}
-
 function renderExports(){
   const root = document.getElementById('exports-root');
   root.innerHTML = '';
@@ -2403,15 +2191,13 @@ function renderExports(){
   root.insertAdjacentHTML('beforeend', `<div class="cftc-row-section" style="padding:8px 10px;border-top:2px solid var(--amber);color:var(--amber);font-weight:900;text-transform:uppercase;letter-spacing:.16em;font-size:13px;margin-bottom:0">Commodity Summary — YTD vs Prior Year<span class="exp-hint">click a commodity to see its detail below</span></div>`);
   root.insertAdjacentHTML('beforeend', buildExportsSummaryTable());
   root.insertAdjacentHTML('beforeend', `<div id="exports-detail"></div>`);
-  root.insertAdjacentHTML('beforeend', `<div id="exports-charts"></div>`);
   root.insertAdjacentHTML('beforeend', `<div class="page-footnote">Metric tons (cotton: running bales); current marketing year only. Net Sales = new sales this week, net of cancellations · Outstanding = sold, not yet shipped · Accum. Exports = shipped YTD · Total Commitment = Accum. + Outstanding. Week over Week lists each weekly report, newest first.</div>`);
 
   // click a commodity in the summary to switch the detail below (no re-render of the page, so nothing jumps)
   root.querySelectorAll('.exp-table tr.exp-click').forEach(tr=>{
-    tr.addEventListener('click', ()=>{ exportsCommodity = tr.dataset.c; renderExportsDetail(); renderExportsCharts(); });
+    tr.addEventListener('click', ()=>{ exportsCommodity = tr.dataset.c; renderExportsDetail(); });
   });
   renderExportsDetail();
-  renderExportsCharts();
 }
 
 // The lower section: country breakdown or week-over-week for the commodity selected in the summary table.
@@ -2433,12 +2219,6 @@ function renderExportsDetail(){
 fetch('data/export_sales_history.json?_=' + Date.now())
   .then(r=>{ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
   .then(h=>{ EXPORTS_HISTORY = h; renderExportsDetail(); })
-  .catch(()=>{ /* not created yet - fine */ });
-
-// Multi-year history for the seasonal charts is optional: with no file the charts section simply doesn't appear.
-fetch('data/export_sales_seasonal.json?_=' + Date.now())
-  .then(r=>{ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
-  .then(d=>{ EXPORTS_SEASONAL = d; renderExportsCharts(); })
   .catch(()=>{ /* not created yet - fine */ });
 
 fetch('data/export_sales.json?_=' + Date.now())
