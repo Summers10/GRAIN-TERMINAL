@@ -65338,9 +65338,9 @@
     }
   },
   "_meta": {
-    "fetched_at": "2026-11-05T21:03:52Z",
+    "fetched_at": "2026-11-05T23:38:53Z",
     "wasde_release": "2026-10-09",
-    "wasde_source": "built-in schedule"
+    "wasde_source": "usda.gov WASDE page"
   },
   "_prior": {
     "release": "2026-09-11",
