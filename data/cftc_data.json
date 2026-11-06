@@ -4,13 +4,6 @@
       "label": "Corn",
       "history": [
         {
-          "date": "2016-11-08",
-          "oi": 1751431.0,
-          "oi_chg": -10026.0,
-          "mm_long": 213658.0,
-          "mm_short": 241712.0
-        },
-        {
           "date": "2016-11-15",
           "oi": 1811606.0,
           "oi_chg": 60175.0,
@@ -3655,13 +3648,6 @@
     "001602": {
       "label": "Wheat (Chicago SRW)",
       "history": [
-        {
-          "date": "2016-11-08",
-          "oi": 610807.0,
-          "oi_chg": 9445.0,
-          "mm_long": 81476.0,
-          "mm_short": 192822.0
-        },
         {
           "date": "2016-11-15",
           "oi": 635308.0,
@@ -7308,13 +7294,6 @@
       "label": "Wheat (KC HRW)",
       "history": [
         {
-          "date": "2016-11-08",
-          "oi": 277904.0,
-          "oi_chg": 2508.0,
-          "mm_long": 80022.0,
-          "mm_short": 78519.0
-        },
-        {
           "date": "2016-11-15",
           "oi": 271379.0,
           "oi_chg": -6524.0,
@@ -10959,13 +10938,6 @@
     "001626": {
       "label": "Wheat (Mpls Spring)",
       "history": [
-        {
-          "date": "2016-11-08",
-          "oi": 71226.0,
-          "oi_chg": 503.0,
-          "mm_long": 4555.0,
-          "mm_short": 2912.0
-        },
         {
           "date": "2016-11-15",
           "oi": 69989.0,
@@ -17634,13 +17606,6 @@
       "label": "Soybeans",
       "history": [
         {
-          "date": "2016-11-08",
-          "oi": 729804.0,
-          "oi_chg": 12167.0,
-          "mm_long": 141795.0,
-          "mm_short": 17531.0
-        },
-        {
           "date": "2016-11-15",
           "oi": 735285.0,
           "oi_chg": 5480.0,
@@ -21285,13 +21250,6 @@
     "007601": {
       "label": "Soybean Oil",
       "history": [
-        {
-          "date": "2016-11-08",
-          "oi": 515135.0,
-          "oi_chg": -2849.0,
-          "mm_long": 133472.0,
-          "mm_short": 14718.0
-        },
         {
           "date": "2016-11-15",
           "oi": 475835.0,
@@ -24938,13 +24896,6 @@
       "label": "Soybean Meal",
       "history": [
         {
-          "date": "2016-11-08",
-          "oi": 423426.0,
-          "oi_chg": 4401.0,
-          "mm_long": 49266.0,
-          "mm_short": 33034.0
-        },
-        {
           "date": "2016-11-15",
           "oi": 432977.0,
           "oi_chg": 9551.0,
@@ -28589,13 +28540,6 @@
     "061641": {
       "label": "Feeder Cattle",
       "history": [
-        {
-          "date": "2016-11-08",
-          "oi": 52092.0,
-          "oi_chg": 74.0,
-          "mm_long": 9809.0,
-          "mm_short": 12166.0
-        },
         {
           "date": "2016-11-15",
           "oi": 53866.0,
@@ -32242,13 +32186,6 @@
       "label": "Live Cattle",
       "history": [
         {
-          "date": "2016-11-08",
-          "oi": 344738.0,
-          "oi_chg": -3764.0,
-          "mm_long": 76672.0,
-          "mm_short": 36751.0
-        },
-        {
           "date": "2016-11-15",
           "oi": 345496.0,
           "oi_chg": 758.0,
@@ -35893,13 +35830,6 @@
     "054642": {
       "label": "Lean Hogs",
       "history": [
-        {
-          "date": "2016-11-08",
-          "oi": 294790.0,
-          "oi_chg": 2257.0,
-          "mm_long": 73560.0,
-          "mm_short": 38598.0
-        },
         {
           "date": "2016-11-15",
           "oi": 303024.0,
@@ -39546,13 +39476,6 @@
       "label": "Cocoa",
       "history": [
         {
-          "date": "2016-11-08",
-          "oi": 284124.0,
-          "oi_chg": -41998.0,
-          "mm_long": 57472.0,
-          "mm_short": 41131.0
-        },
-        {
           "date": "2016-11-15",
           "oi": 289867.0,
           "oi_chg": 5743.0,
@@ -43197,13 +43120,6 @@
     "083731": {
       "label": "Coffee",
       "history": [
-        {
-          "date": "2016-11-08",
-          "oi": 279072.0,
-          "oi_chg": 13929.0,
-          "mm_long": 69766.0,
-          "mm_short": 10514.0
-        },
         {
           "date": "2016-11-15",
           "oi": 232722.0,
@@ -46850,13 +46766,6 @@
       "label": "Cotton",
       "history": [
         {
-          "date": "2016-11-08",
-          "oi": 328381.0,
-          "oi_chg": -9258.0,
-          "mm_long": 72120.0,
-          "mm_short": 10226.0
-        },
-        {
           "date": "2016-11-15",
           "oi": 276967.0,
           "oi_chg": -51414.0,
@@ -50501,13 +50410,6 @@
     "080732": {
       "label": "Sugar",
       "history": [
-        {
-          "date": "2016-11-08",
-          "oi": 1090944.0,
-          "oi_chg": 8990.0,
-          "mm_long": 240433.0,
-          "mm_short": 6689.0
-        },
         {
           "date": "2016-11-15",
           "oi": 1080293.0,
@@ -54154,13 +54056,6 @@
       "label": "Crude Oil (WTI)",
       "history": [
         {
-          "date": "2016-11-08",
-          "oi": 2819007.0,
-          "oi_chg": 164360.0,
-          "mm_long": 304734.0,
-          "mm_short": 145319.0
-        },
-        {
           "date": "2016-11-15",
           "oi": 2922285.0,
           "oi_chg": 103278.0,
@@ -57805,13 +57700,6 @@
     "022651": {
       "label": "Heating Oil",
       "history": [
-        {
-          "date": "2016-11-08",
-          "oi": 424166.0,
-          "oi_chg": 3532.0,
-          "mm_long": 33158.0,
-          "mm_short": 25367.0
-        },
         {
           "date": "2016-11-15",
           "oi": 437268.0,
@@ -61458,13 +61346,6 @@
       "label": "RBOB Gasoline",
       "history": [
         {
-          "date": "2016-11-08",
-          "oi": 392218.0,
-          "oi_chg": -58.0,
-          "mm_long": 69861.0,
-          "mm_short": 30015.0
-        },
-        {
           "date": "2016-11-15",
           "oi": 385521.0,
           "oi_chg": -6697.0,
@@ -65109,13 +64990,6 @@
     "023651": {
       "label": "Natural Gas",
       "history": [
-        {
-          "date": "2016-11-08",
-          "oi": 1207112.0,
-          "oi_chg": 28254.0,
-          "mm_long": 242447.0,
-          "mm_short": 203175.0
-        },
         {
           "date": "2016-11-15",
           "oi": 1228066.0,
@@ -68762,13 +68636,6 @@
       "label": "Gold",
       "history": [
         {
-          "date": "2016-11-08",
-          "oi": 748147.0,
-          "oi_chg": 8945.0,
-          "mm_long": 212887.0,
-          "mm_short": 36513.0
-        },
-        {
           "date": "2016-11-15",
           "oi": 712406.0,
           "oi_chg": -35740.0,
@@ -72414,13 +72281,6 @@
       "label": "Silver",
       "history": [
         {
-          "date": "2016-11-08",
-          "oi": 212306.0,
-          "oi_chg": -8582.0,
-          "mm_long": 72776.0,
-          "mm_short": 15262.0
-        },
-        {
           "date": "2016-11-15",
           "oi": 199357.0,
           "oi_chg": -12949.0,
@@ -76065,13 +75925,6 @@
     "085692": {
       "label": "Copper",
       "history": [
-        {
-          "date": "2016-11-08",
-          "oi": 236021.0,
-          "oi_chg": 31513.0,
-          "mm_long": 92032.0,
-          "mm_short": 32769.0
-        },
         {
           "date": "2016-11-15",
           "oi": 241085.0,
@@ -79721,13 +79574,6 @@
       "name": "USD INDEX | USD INDEX - ICE FUTURES U.S.",
       "history": [
         {
-          "date": "2016-11-08",
-          "oi": 86423.0,
-          "oi_chg": null,
-          "mm_long": 30100.0,
-          "mm_short": 27697.0
-        },
-        {
           "date": "2016-11-15",
           "oi": 82020.0,
           "oi_chg": null,
@@ -83375,13 +83221,6 @@
       "report": "TFF",
       "name": "EURO FX | EURO FX - CHICAGO MERCANTILE EXCHANGE",
       "history": [
-        {
-          "date": "2016-11-08",
-          "oi": 477706.0,
-          "oi_chg": null,
-          "mm_long": 37446.0,
-          "mm_short": 178874.0
-        },
         {
           "date": "2016-11-15",
           "oi": 491821.0,
@@ -87031,13 +86870,6 @@
       "name": "JAPANESE YEN | JAPANESE YEN - CHICAGO MERCANTILE EXCHANGE",
       "history": [
         {
-          "date": "2016-11-08",
-          "oi": 201398.0,
-          "oi_chg": null,
-          "mm_long": 49938.0,
-          "mm_short": 29119.0
-        },
-        {
           "date": "2016-11-15",
           "oi": 222218.0,
           "oi_chg": null,
@@ -90685,13 +90517,6 @@
       "report": "TFF",
       "name": "BRITISH POUND | BRITISH POUND - CHICAGO MERCANTILE EXCHANGE",
       "history": [
-        {
-          "date": "2016-11-08",
-          "oi": 286943.0,
-          "oi_chg": null,
-          "mm_long": 36761.0,
-          "mm_short": 118585.0
-        },
         {
           "date": "2016-11-15",
           "oi": 282961.0,
@@ -94341,13 +94166,6 @@
       "name": "CANADIAN DOLLAR | CANADIAN DOLLAR - CHICAGO MERCANTILE EXCHANGE",
       "history": [
         {
-          "date": "2016-11-08",
-          "oi": 137240.0,
-          "oi_chg": null,
-          "mm_long": 17308.0,
-          "mm_short": 44935.0
-        },
-        {
           "date": "2016-11-15",
           "oi": 143606.0,
           "oi_chg": null,
@@ -97995,13 +97813,6 @@
       "report": "TFF",
       "name": "AUSTRALIAN DOLLAR | AUSTRALIAN DOLLAR - CHICAGO MERCANTILE EXCHANGE",
       "history": [
-        {
-          "date": "2016-11-08",
-          "oi": 157494.0,
-          "oi_chg": null,
-          "mm_long": 76245.0,
-          "mm_short": 22445.0
-        },
         {
           "date": "2016-11-15",
           "oi": 133526.0,
@@ -101651,13 +101462,6 @@
       "name": "SWISS FRANC | SWISS FRANC - CHICAGO MERCANTILE EXCHANGE",
       "history": [
         {
-          "date": "2016-11-08",
-          "oi": 56027.0,
-          "oi_chg": null,
-          "mm_long": 8277.0,
-          "mm_short": 30933.0
-        },
-        {
           "date": "2016-11-15",
           "oi": 58109.0,
           "oi_chg": null,
@@ -105305,13 +105109,6 @@
       "report": "TFF",
       "name": "E-MINI S&P 500 | E-MINI S&P 500 - CHICAGO MERCANTILE EXCHANGE",
       "history": [
-        {
-          "date": "2016-11-08",
-          "oi": 3682780.0,
-          "oi_chg": null,
-          "mm_long": 433988.0,
-          "mm_short": 627199.0
-        },
         {
           "date": "2016-11-15",
           "oi": 3666527.0,
@@ -108961,13 +108758,6 @@
       "name": "UST 2Y NOTE | UST 2Y NOTE - CHICAGO BOARD OF TRADE",
       "history": [
         {
-          "date": "2016-11-08",
-          "oi": 1240559.0,
-          "oi_chg": null,
-          "mm_long": 435400.0,
-          "mm_short": 215231.0
-        },
-        {
           "date": "2016-11-15",
           "oi": 1216366.0,
           "oi_chg": null,
@@ -112615,13 +112405,6 @@
       "report": "TFF",
       "name": "UST 5Y NOTE | UST 5Y NOTE - CHICAGO BOARD OF TRADE",
       "history": [
-        {
-          "date": "2016-11-08",
-          "oi": 3083383.0,
-          "oi_chg": null,
-          "mm_long": 292786.0,
-          "mm_short": 1125641.0
-        },
         {
           "date": "2016-11-15",
           "oi": 3251789.0,
@@ -116271,13 +116054,6 @@
       "name": "UST 10Y NOTE | UST 10Y NOTE - CHICAGO BOARD OF TRADE",
       "history": [
         {
-          "date": "2016-11-08",
-          "oi": 3465510.0,
-          "oi_chg": null,
-          "mm_long": 533311.0,
-          "mm_short": 582638.0
-        },
-        {
           "date": "2016-11-15",
           "oi": 4091641.0,
           "oi_chg": null,
@@ -119925,13 +119701,6 @@
       "report": "TFF",
       "name": "ULTRA UST 10Y | ULTRA UST 10Y - CHICAGO BOARD OF TRADE",
       "history": [
-        {
-          "date": "2016-11-08",
-          "oi": 257262.0,
-          "oi_chg": null,
-          "mm_long": 117544.0,
-          "mm_short": 11507.0
-        },
         {
           "date": "2016-11-15",
           "oi": 280381.0,
@@ -123581,13 +123350,6 @@
       "name": "UST BOND | UST BOND - CHICAGO BOARD OF TRADE",
       "history": [
         {
-          "date": "2016-11-08",
-          "oi": 671846.0,
-          "oi_chg": null,
-          "mm_long": 33762.0,
-          "mm_short": 90509.0
-        },
-        {
           "date": "2016-11-15",
           "oi": 814310.0,
           "oi_chg": null,
@@ -127236,13 +126998,6 @@
       "name": "ULTRA UST BOND | ULTRA UST BOND - CHICAGO BOARD OF TRADE",
       "history": [
         {
-          "date": "2016-11-08",
-          "oi": 634046.0,
-          "oi_chg": null,
-          "mm_long": 33066.0,
-          "mm_short": 211137.0
-        },
-        {
           "date": "2016-11-15",
           "oi": 653995.0,
           "oi_chg": null,
@@ -130886,7 +130641,7 @@
     }
   },
   "_meta": {
-    "fetched_at": "2026-11-05T23:38:57Z",
+    "fetched_at": "2026-11-06T01:08:37Z",
     "years_history": 10,
     "financials": {
       "dataset": "yw9f-hn96 (TFF Futures and Options Combined)",
