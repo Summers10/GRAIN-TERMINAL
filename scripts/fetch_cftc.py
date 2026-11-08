@@ -318,9 +318,30 @@ def main():
                        "contracts_loaded": len(fin), "contracts_expected": len(FINANCIAL_CONTRACTS)},
     }
  
+    # Columnar history: same weeks and figures, far fewer repeated key names.
+    saved = {"codes": {}, "_meta": result["_meta"]}
+    cols = ["date", "oi", "oi_chg", "mm_long", "mm_short"]
+
+    def cell(v):
+        if isinstance(v, float) and v.is_integer():
+            return int(v)
+        return v
+
+    for code, rec in result["codes"].items():
+        entry = {
+            "label": rec["label"],
+            "cols": cols,
+            "rows": [[cell(h.get(c)) for c in cols] for h in rec["history"]],
+        }
+        for key in ("category", "report", "name"):
+            if key in rec:
+                entry[key] = rec[key]
+        saved["codes"][code] = entry
+
     os.makedirs(os.path.dirname(OUT), exist_ok=True)
     with open(OUT, "w") as f:
-        json.dump(result, f, indent=2)
+        json.dump(saved, f, separators=(",", ":"))
+        f.write("\n")
  
     size = os.path.getsize(OUT)
     print(f"\nContracts fetched ({len(result['codes'])}):")

@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <title>USDA Balance Sheets</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' fill='%23b8720a'/%3E%3C/svg%3E">
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 html{height:100%}
@@ -39,6 +40,15 @@ body.light{
 .panel-hdr{padding:9px 16px;background:var(--bg1);border:1px solid var(--border);border-bottom:none;border-top:3px solid var(--amber)}
 .panel-title{font-size:16px;font-weight:900;letter-spacing:.09em;text-transform:uppercase;color:var(--amber)}
 .panel-sub{font-size:13px;color:var(--text3);letter-spacing:.05em;margin-left:8px}
+.panel-fresh{display:flex;flex-wrap:wrap;gap:6px 16px;align-items:center;padding:6px 16px;background:var(--bg1);border:1px solid var(--border);border-bottom:none;font-size:12px;color:var(--text3);line-height:1.45}
+.badge{font-weight:900;letter-spacing:.08em;text-transform:uppercase;padding:2px 8px;border-radius:2px;font-size:11px}
+.badge-current{background:rgba(46,143,82,.2);color:var(--green)}
+.badge-stale{background:rgba(196,48,43,.18);color:var(--red)}
+.badge-unknown{background:var(--section-bg);color:var(--text2)}
+.fresh-warn{margin:0 0 12px;padding:8px 12px;border:1px solid var(--red);color:var(--red);font-size:13px;font-weight:700}
+.wx-point{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);font-weight:800;margin-left:6px}
+.seas-expired{outline:2px dashed var(--red);outline-offset:-2px}
+.seas-exp-tag{display:block;margin-top:2px;font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:var(--red);font-weight:900}
 .tbl-wrap{overflow-x:auto}
 .bal-table{width:100%;border-collapse:collapse;border:1px solid var(--border2);background:var(--bg)}
 .bal-table th{background:var(--th-bg);padding:8px 8px;text-align:right;font-size:14px;font-weight:800;letter-spacing:.05em;color:var(--text2);border-bottom:2px solid var(--border2);white-space:nowrap}
@@ -127,6 +137,8 @@ document.querySelectorAll('.page-tab').forEach(function(btn){
     document.getElementById('exports-page').style.display = btn.dataset.page === 'exports' ? '' : 'none';
     document.getElementById('weather-page').style.display = btn.dataset.page === 'weather' ? '' : 'none';
     if(btn.dataset.page === 'cftc' && typeof fitCftcTable === 'function') fitCftcTable();   // size the columns once the page is visible
+    if(btn.dataset.page === 'weather' && typeof ensureWeather === 'function') ensureWeather();
+    if(btn.dataset.page === 'exports' && typeof ensureExportHistory === 'function') ensureExportHistory();
   });
 });
 </script>
@@ -160,6 +172,7 @@ document.querySelectorAll('.page-tab').forEach(function(btn){
 <div id="seasonals-page" style="display:none">
 <div id="seasonals-topbar" style="padding:14px 20px;border-bottom:1px solid var(--amber);background:var(--bg);display:flex;align-items:center;gap:20px">
   <h1 style="font-size:18px;font-weight:900;letter-spacing:.12em;text-transform:uppercase;color:var(--amber);white-space:nowrap">Seasonals</h1>
+  <div id="seasonals-meta" style="font-size:13px;color:var(--text3);letter-spacing:.04em;margin-left:auto"></div>
 </div>
   <div id="seasonals-root" style="max-width:100%;margin:0 auto;padding:22px"></div>
 </div>
@@ -218,7 +231,7 @@ function fmt2(v){
   if(v===null || v===undefined || isNaN(v)) return '—';
   return v.toFixed(1);
 }
-function fmtStu(v){ return v===null ? '—' : v.toFixed(1)+'%'; }
+function fmtStu(v){ return v===null ? 'not available' : v.toFixed(1)+'%'; }
 function ordinal(n){
   const r = Math.round(n);
   const mod100 = r % 100;
@@ -282,12 +295,21 @@ function getTotalRaw(yearData, keys){
   for(const k of keys){ const v=getRaw(yearData,k); if(v!==null){sum+=v;any=true;} }
   return any?sum:null;
 }
-function getStu(yearData){
-  const end=getRaw(yearData,'es'), dom=getRaw(yearData,'dc'), exp=getRaw(yearData,'ex');
+// World stocks-to-use is ending stocks / domestic use. Trade is not extra use once every
+// origin is added together. A country, or a group of countries, uses ending stocks /
+// (domestic use + exports). A missing input stays missing — exports are not treated as zero.
+function getStu(yearData, world){
+  const end=getRaw(yearData,'es'), dom=getRaw(yearData,'dc');
   if(end===null||dom===null) return null;
-  const denom=dom+(exp||0);
+  let denom=dom;
+  if(!world){
+    const exp=getRaw(yearData,'ex');
+    if(exp===null) return null;
+    denom=dom+exp;
+  }
   return denom>0 ? (end/denom)*100 : null;
 }
+const STU_NOTE = `<div class="page-footnote">World stocks-to-use is ending stocks divided by domestic use. Country rows, and exporter or importer groups, use ending stocks divided by domestic use plus exports. If an input is missing the ratio shows as not available.</div>`;
 // Commodities with no bushel weight — no MT/BU toggle makes sense for these; Cotton also
 // stays in its native bales unit, while Cocoa/Coffee/Sugar stay in MT (just no bushel toggle).
 const NO_BUSHEL_COMMS = new Set(['Cotton', 'Cocoa', 'Coffee', 'Sugar']);
@@ -360,15 +382,15 @@ function unitLabel(){
   return currentUnit==='bu' ? 'Million Bu' : '1000 MT';
 }
 
-function buildBalanceTable(comm, yearDataFn, years, includeYoy, allYearsFull){
+function buildBalanceTable(comm, yearDataFn, years, includeYoy, allYearsFull, worldStu){
   const latestYear = years[years.length-1];
   const prevYear = years.length>1 ? years[years.length-2] : null;
 
   // Full-history S/U values (not just the displayed years) for percentile ranking.
   const fullYears = allYearsFull || years;
-  const stuHistory = fullYears.map(y => getStu(yearDataFn(y))).filter(v => v!==null);
+  const stuHistory = fullYears.map(y => getStu(yearDataFn(y), worldStu)).filter(v => v!==null);
   function stuPctile(y){
-    const v = getStu(yearDataFn(y));
+    const v = getStu(yearDataFn(y), worldStu);
     if(v===null || stuHistory.length===0) return null;
     const countLE = stuHistory.filter(x => x<=v).length;
     return (countLE/stuHistory.length)*100;
@@ -390,8 +412,8 @@ function buildBalanceTable(comm, yearDataFn, years, includeYoy, allYearsFull){
     {type:'total', keys:['dc','ex'], label:'Total demand'},
     {type:'section', label:'Balance'},
     {type:'row', key:'es', label:'Ending stocks', cls:'row-ending'},
-    {type:'stu', label:'Stocks / Use %', cls:'row-stu'},
-    {type:'stu_pctile', label:'S/U Percentile Rank (' + fullYears.length + 'yr hist)', cls:'row-pctile'},
+    {type:'stu', label: worldStu ? 'Stocks / use % — ending / domestic use' : 'Stocks / use % — ending / (domestic use + exports)', cls:'row-stu'},
+    {type:'stu_pctile', label:'S/U percentile rank (' + fullYears.length + 'yr hist)', cls:'row-pctile'},
   ];
 
   // value of a row for one year-record (works for the current numbers and for the prior-WASDE `_p` record alike)
@@ -404,7 +426,7 @@ function buildBalanceTable(comm, yearDataFn, years, includeYoy, allYearsFull){
       return yieldBuAc(getRaw(yd,'pr'), getRaw(yd,'ah'), comm);
     }
     if(row.type==='total') return convertVal(getTotalRaw(yd, row.keys), currentUnit, comm);
-    if(row.type==='stu') return getStu(yd);
+    if(row.type==='stu') return getStu(yd, worldStu);
     return convertVal(getRaw(yd, row.key), currentUnit, comm);
   }
   function displayVal(row, y){
@@ -478,7 +500,7 @@ function buildBalanceTable(comm, yearDataFn, years, includeYoy, allYearsFull){
 }
 
 function panelWrap(title, sub, innerHtml){
-  return `<div class="panel"><div class="panel-hdr"><span class="panel-title">${title}</span><span class="panel-sub">${sub}</span></div>${innerHtml}</div>`;
+  return `<div class="panel"><div class="panel-hdr"><span class="panel-title">${title}</span><span class="panel-sub">${sub}</span></div>${usdaFreshStrip()}${innerHtml}</div>`;
 }
 
 // Looks up CROP_CALENDAR (defined later in the file, safe since this only runs after full page load)
@@ -624,30 +646,31 @@ function render(){
     stackOats.className = 'stack-wrap';
     ['Canada','United States'].filter(c=>countries[c]).forEach(c=>{
       stackOats.insertAdjacentHTML('beforeend', panelWrap(c.toUpperCase(), unitLabel(),
-        buildBalanceTable(comm, y=>(countries[c]||{})[y], years10, true, yearsAll)));
+        buildBalanceTable(comm, y=>(countries[c]||{})[y], years10, true, yearsAll, false)));
     });
     root.appendChild(stackOats);
+    root.insertAdjacentHTML('beforeend', STU_NOTE);
     return;
   }
 
   root.insertAdjacentHTML('beforeend', `<div class="sec-hdr">World Balance Sheet — ${comm}</div>`);
   root.insertAdjacentHTML('beforeend', panelWrap('WORLD', unitLabel(),
-    buildBalanceTable(comm, y=>(countries['World']||{})[y], years10, true, yearsAll)));
+    buildBalanceTable(comm, y=>(countries['World']||{})[y], years10, true, yearsAll, true)));
 
   root.insertAdjacentHTML('beforeend', `<div class="sec-hdr">Major Exporters — Aggregate Balance Sheet</div>`);
   root.insertAdjacentHTML('beforeend', panelWrap('MAJOR EXPORTERS', expList.join(', '),
-    buildBalanceTable(comm, y=>sumCountries(countries, expList, y), years10, true, yearsAll)));
+    buildBalanceTable(comm, y=>sumCountries(countries, expList, y), years10, true, yearsAll, false)));
 
   root.insertAdjacentHTML('beforeend', `<div class="sec-hdr">Major Importers — Aggregate Balance Sheet</div>`);
   root.insertAdjacentHTML('beforeend', panelWrap('MAJOR IMPORTERS', impList.join(', '),
-    buildBalanceTable(comm, y=>sumCountries(countries, impList, y), years10, true, yearsAll)));
+    buildBalanceTable(comm, y=>sumCountries(countries, impList, y), years10, true, yearsAll, false)));
 
   root.insertAdjacentHTML('beforeend', `<div class="sec-hdr">Major Exporters — Individual Balance Sheets</div>`);
   const stack = document.createElement('div');
   stack.className = 'stack-wrap';
   expList.forEach(c=>{
     stack.insertAdjacentHTML('beforeend', panelWrap(panelTitleWithHarvest(comm, c), unitLabel(),
-      buildBalanceTable(comm, y=>(countries[c]||{})[y], years10, true, yearsAll)));
+      buildBalanceTable(comm, y=>(countries[c]||{})[y], years10, true, yearsAll, false)));
   });
   root.appendChild(stack);
 
@@ -668,6 +691,7 @@ function render(){
     buildMetricByCountryTable(impList, countries, years10, 'im')));
   root.insertAdjacentHTML('beforeend', panelWrap('ENDING STOCKS', 'Importers — ' + unitLabel(),
     buildMetricByCountryTable(impList, countries, years10, 'es')));
+  root.insertAdjacentHTML('beforeend', STU_NOTE);
 }
 
 function initToggles(){
@@ -726,27 +750,170 @@ function latestExportsDate(){
   });
   return best;
 }
-// USDA: the WASDE release the pulled PSD numbers reflect (worked out by fetch_psd.py from USDA's release schedule).
-// Coffee and Sugar are on USDA's semi-annual reports instead of the monthly WASDE.
-function usdaAsOfText(comm){
-  if(comm === 'Coffee' || comm === 'Sugar') return 'USDA estimates: semi-annual report';
-  const d = parseAnyDate(DATA && DATA._meta && DATA._meta.wasde_release);
-  const pd = parseAnyDate(DATA && DATA._prior && DATA._prior.release);
-  return d ? 'USDA estimates: ' + fmtAsOfDate(d, false) + ' WASDE' + (pd ? ' (prior: ' + fmtAsOfDate(pd, false) + ')' : '') : '';
+// How old a successful fetch (or the source's own date) can be before the panel is marked stale.
+// These follow the release cadence. They are not a guess at a missing number.
+const STALE_WASDE_FETCH_DAYS = 45;
+const STALE_WASDE_RELEASE_DAYS = 50;
+const STALE_SEMIANNUAL_FETCH_DAYS = 200;
+const STALE_CFTC_ASOF_DAYS = 12;
+const STALE_WEEKLY_FETCH_DAYS = 8;
+const STALE_EXPORT_WEEK_DAYS = 18;
+const STALE_WEATHER_HOURS = 36;
+const CA_MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+function parseStamp(s){
+  if(!s) return null;
+  const d = new Date(s);
+  return isNaN(d.getTime()) ? null : d;
 }
-// Header block: line 1 = when the pipeline last ran, line 2 = what date the data itself is from
-function setMetaLines(id, runStamp, asOfText){
+function ageDays(d){
+  const today = new Date();
+  const t = Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate());
+  return Math.floor((t - d.getTime()) / 86400000);
+}
+function fmtCaDate(d){
+  if(!d) return 'not available';
+  return d.getUTCDate()+' '+CA_MONTHS[d.getUTCMonth()]+' '+d.getUTCFullYear();
+}
+function fmtStamp(s){
+  const d = parseStamp(s);
+  if(!d) return 'not available';
+  const hh = String(d.getUTCHours()).padStart(2,'0');
+  const mm = String(d.getUTCMinutes()).padStart(2,'0');
+  return fmtCaDate(d)+', '+hh+':'+mm+' UTC';
+}
+function freshnessBadge(stale){
+  if(stale===true) return '<span class="badge badge-stale">Stale</span>';
+  if(stale===false) return '<span class="badge badge-current">Current</span>';
+  return '<span class="badge badge-unknown">Not checked</span>';
+}
+function freshStrip(parts, stale){
+  return `<div class="panel-fresh">${parts.map(p=>`<span>${p}</span>`).join('')}${freshnessBadge(stale)}</div>`;
+}
+function usdaStatus(comm){
+  const fetched = DATA && DATA._meta && DATA._meta.fetched_at;
+  const fetchDate = parseStamp(fetched);
+  const semi = comm==='Coffee' || comm==='Sugar';
+  const release = parseAnyDate(DATA && DATA._meta && DATA._meta.wasde_release);
+  let stale = null;
+  if(fetchDate){
+    const days = (Date.now()-fetchDate.getTime())/86400000;
+    stale = semi ? days > STALE_SEMIANNUAL_FETCH_DAYS
+      : (days > STALE_WASDE_FETCH_DAYS || (release ? ageDays(release) > STALE_WASDE_RELEASE_DAYS : false));
+  }
+  const parts = [
+    semi ? 'Source release: not available' : ('Source release: '+(release ? fmtCaDate(release)+' WASDE' : 'not available')),
+    'Last fetch: '+fmtStamp(fetched)
+  ];
+  return {parts, stale};
+}
+function usdaFreshStrip(){
+  if(!DATA || !DATA._meta) return freshStrip(['Source release: not available','Last fetch: not available'], null);
+  const s = usdaStatus(typeof currentComm==='undefined' ? 'Wheat' : currentComm);
+  return freshStrip(s.parts, s.stale);
+}
+function cftcStatus(){
+  const asOf = (typeof CFTC_DATA!=='undefined' && CFTC_DATA) ? latestCftcDate() : null;
+  const fetched = (typeof CFTC_DATA!=='undefined' && CFTC_DATA && CFTC_DATA._meta) ? CFTC_DATA._meta.fetched_at : null;
+  const fetchDate = parseStamp(fetched);
+  let stale = null;
+  if(asOf || fetchDate){
+    const days = fetchDate ? (Date.now()-fetchDate.getTime())/86400000 : null;
+    stale = (asOf ? ageDays(asOf) > STALE_CFTC_ASOF_DAYS : false) || (days!==null && days > STALE_WEEKLY_FETCH_DAYS);
+  }
+  return {parts:[
+    'Source release: not available',
+    'Positions as of: '+(asOf ? fmtCaDate(asOf) : 'not available'),
+    'Last fetch: '+fmtStamp(fetched)
+  ], stale};
+}
+function exportsStatus(){
+  const week = (typeof EXPORTS_DATA!=='undefined') ? latestExportsDate() : null;
+  const fetched = (typeof EXPORTS_DATA!=='undefined' && EXPORTS_DATA && EXPORTS_DATA._meta) ? EXPORTS_DATA._meta.fetched_at : null;
+  const fetchDate = parseStamp(fetched);
+  let stale = null;
+  if(week || fetchDate){
+    const days = fetchDate ? (Date.now()-fetchDate.getTime())/86400000 : null;
+    stale = (week ? ageDays(week) > STALE_EXPORT_WEEK_DAYS : false) || (days!==null && days > STALE_WEEKLY_FETCH_DAYS);
+  }
+  return {parts:[
+    'Source release: not available',
+    'Week ending: '+(week ? fmtCaDate(week) : 'not available'),
+    'Last fetch: '+fmtStamp(fetched)
+  ], stale};
+}
+function weatherStatus(){
+  const fetched = (typeof WEATHER_DATA!=='undefined' && WEATHER_DATA && WEATHER_DATA._meta) ? WEATHER_DATA._meta.fetched_at : null;
+  const fetchDate = parseStamp(fetched);
+  let stale = null;
+  if(fetchDate) stale = (Date.now()-fetchDate.getTime())/36e5 > STALE_WEATHER_HOURS;
+  else if(typeof weatherState!=='undefined' && weatherState==='failed') stale = true;
+  return {parts:['Source release: not available','Last fetch: '+fmtStamp(fetched)], stale};
+}
+function seasonalsStatus(){
+  const raw = (typeof SEASONALS_REVIEWED==='string') ? SEASONALS_REVIEWED : null;
+  const reviewed = parseAnyDate(raw);
+  let stale = null;
+  if(reviewed){
+    const exp = new Date(reviewed.getTime());
+    exp.setUTCMonth(exp.getUTCMonth()+12);
+    const today = new Date();
+    const t = Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate());
+    stale = t > exp.getTime();
+  }
+  return {parts:[
+    'Source release: not available',
+    'Last reviewed: '+(reviewed ? fmtCaDate(reviewed) : 'not available'),
+    'Last fetch: not available'
+  ], stale};
+}
+function summarySourceStale(){
+  const fetched = DATA && DATA._meta && DATA._meta.fetched_at;
+  const release = parseAnyDate(DATA && DATA._meta && DATA._meta.wasde_release);
+  const fetchDate = parseStamp(fetched);
+  let usdaStale = null;
+  if(fetchDate){
+    const days = (Date.now()-fetchDate.getTime())/86400000;
+    usdaStale = days > STALE_WASDE_FETCH_DAYS || (release ? ageDays(release) > STALE_WASDE_RELEASE_DAYS : false);
+  }
+  const flags = [usdaStale, cftcStatus().stale, exportsStatus().stale, seasonalsStatus().stale];
+  if(flags.some(s=>s===true)) return true;
+  if(flags.every(s=>s===false)) return false;
+  return null;
+}
+function summarySourceStrips(){
+  const fetched = DATA && DATA._meta && DATA._meta.fetched_at;
+  const release = parseAnyDate(DATA && DATA._meta && DATA._meta.wasde_release);
+  const fetchDate = parseStamp(fetched);
+  let usdaStale = null;
+  if(fetchDate){
+    const days = (Date.now()-fetchDate.getTime())/86400000;
+    usdaStale = days > STALE_WASDE_FETCH_DAYS || (release ? ageDays(release) > STALE_WASDE_RELEASE_DAYS : false);
+  }
+  const cftc = cftcStatus(), exp = exportsStatus(), seas = seasonalsStatus();
+  return `<div class="panel"><div class="panel-hdr"><span class="panel-title">Sources</span><span class="panel-sub">release date, last successful fetch, stale status</span></div>`
+    + freshStrip(['WASDE release: '+(release?fmtCaDate(release):'not available'), 'Coffee and sugar release: not available', 'Last fetch: '+fmtStamp(fetched)], usdaStale)
+    + freshStrip(cftc.parts, cftc.stale)
+    + freshStrip(exp.parts, exp.stale)
+    + freshStrip(seas.parts, seas.stale)
+    + `</div>`;
+}
+// Header block: last successful fetch, the source date, and whether that source is stale.
+function setMetaLines(id, runStamp, asOfText, stale){
   const el = document.getElementById(id);
   if(!el) return;
   const esc = t => String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   el.style.textAlign = 'right';
   el.style.lineHeight = '1.5';
-  el.innerHTML = 'Last updated: ' + esc(runStamp || 'unknown') +
-    (asOfText ? '<br><span style="color:var(--text2)">' + esc(asOfText) + '</span>' : '');
+  el.innerHTML = 'Last fetch: ' + esc(runStamp ? fmtStamp(runStamp) : 'not available') +
+    (asOfText ? '<br><span style="color:var(--text2)">' + esc(asOfText) + '</span>' : '') +
+    '<br>' + freshnessBadge(stale===undefined ? null : stale);
 }
-function updateUsdaMeta(){ setMetaLines('meta', DATA && DATA._meta && DATA._meta.fetched_at, usdaAsOfText(currentComm)); }
+function updateUsdaMeta(){
+  const s = usdaStatus(currentComm);
+  setMetaLines('meta', DATA && DATA._meta && DATA._meta.fetched_at, s.parts[0], s.stale);
+}
 
-fetch('data/psd_data.json?_=' + Date.now())
+fetch('data/psd_data.json')
   .then(r=>{ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
   .then(data=>{
     DATA = data;
@@ -759,6 +926,9 @@ fetch('data/psd_data.json?_=' + Date.now())
   })
   .catch(e=>{
     document.getElementById('root').innerHTML = `<div id="err">Error loading data: ${e.message}</div>`;
+    DATA = DATA || {};
+    usdaReady = true;
+    if(typeof checkSummaryReady === 'function') checkSummaryReady();
   });
 </script>
 
@@ -885,22 +1055,27 @@ let usdaReady = false;
 let cftcReady = false;
 let exportsReady = false;
 let WEATHER_DATA = null;
-let weatherState = 'loading';   // 'loading' | 'ready' | 'failed' - only the Weather page cares
+let weatherState = 'idle';   // 'idle' | 'loading' | 'ready' | 'failed' - loaded when the Weather tab opens
 function checkSummaryReady(){
   if(usdaReady && cftcReady && exportsReady && typeof renderSummary === 'function') renderSummary();
 }
 
-fetch('data/weather_data.json?_=' + Date.now())
-  .then(r=>{ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
-  .then(data=>{
-    WEATHER_DATA = data;
-    weatherState = 'ready';
-    if(typeof renderWeatherPage === 'function') renderWeatherPage();
-  })
-  .catch(e=>{
-    weatherState = 'failed';
-    if(typeof renderWeatherPage === 'function') renderWeatherPage();
-  });
+function ensureWeather(){
+  if(weatherState==='loading' || weatherState==='ready') return;
+  weatherState = 'loading';
+  if(typeof renderWeatherPage === 'function') renderWeatherPage();
+  fetch('data/weather_data.json')
+    .then(r=>{ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
+    .then(data=>{
+      WEATHER_DATA = data;
+      weatherState = 'ready';
+      if(typeof renderWeatherPage === 'function') renderWeatherPage();
+    })
+    .catch(e=>{
+      weatherState = 'failed';
+      if(typeof renderWeatherPage === 'function') renderWeatherPage();
+    });
+}
 
 function cftcFmt(v){ return (v===null||v===undefined||isNaN(v)) ? '—' : Math.round(v).toLocaleString(); }
 function cftcPct(v){ return (v===null||v===undefined||isNaN(v)) ? '—' : v.toFixed(1)+'%'; }
@@ -1368,14 +1543,28 @@ function fitCftcTable(){
 let _cftcFitTimer = null;
 window.addEventListener('resize', ()=>{ clearTimeout(_cftcFitTimer); _cftcFitTimer = setTimeout(fitCftcTable, 150); });
 
+function normaliseCftc(data){
+  if(!data || !data.codes) return data;
+  Object.values(data.codes).forEach(rec=>{
+    if(Array.isArray(rec.history) || !Array.isArray(rec.rows)) return;
+    const cols = rec.cols || ['date','oi','oi_chg','mm_long','mm_short'];
+    rec.history = rec.rows.map(row=>{
+      const o = {};
+      cols.forEach((c,i)=>{ o[c] = (row[i]===undefined ? null : row[i]); });
+      return o;
+    });
+  });
+  return data;
+}
 function renderCftc(){
   const root = document.getElementById('cftc-root');
   root.innerHTML = '';
   const yrs = CFTC_DATA._meta?.years_history;
-  { const d = latestCftcDate(); setMetaLines('cftc-meta', CFTC_DATA._meta?.fetched_at, d ? 'Positions as of ' + fmtAsOfDate(d, true) : ''); }
+  const st = cftcStatus();
+  setMetaLines('cftc-meta', CFTC_DATA._meta?.fetched_at, st.parts.slice(0,2).join(' · '), st.stale);
   const list = cftcProductList();
   if(!list.some(e=>e.code === cftcSelected)) cftcSelected = list.length ? list[0].code : null;   // first product with data
-  root.insertAdjacentHTML('beforeend', buildCftcMasterTable());
+  root.insertAdjacentHTML('beforeend', `<div class="panel"><div class="panel-hdr"><span class="panel-title">Positions</span><span class="panel-sub">Managed Money, except where noted</span></div>${freshStrip(st.parts, st.stale)}${buildCftcMasterTable()}</div>`);
   root.insertAdjacentHTML('beforeend', `<div id="cftc-chart"></div>`);
   root.querySelectorAll('tr.cftc-click').forEach(tr=>tr.addEventListener('click', ()=>cftcSelect(tr.dataset.code, true)));
   fitCftcTable();
@@ -1386,17 +1575,19 @@ function renderCftc(){
 function loadCftc(){
   if(cftcLoaded) return;
   cftcLoaded = true;
-  fetch('data/cftc_data.json?_=' + Date.now())
+  fetch('data/cftc_data.json')
     .then(r=>{ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
     .then(data=>{
-      CFTC_DATA = data;
+      CFTC_DATA = normaliseCftc(data);
       renderCftc();
       cftcReady = true;
       checkSummaryReady();
     })
     .catch(e=>{
       document.getElementById('cftc-root').innerHTML = `<div id="cftc-err">Error loading CFTC data: ${e.message}</div>`;
-      cftcLoaded = false;
+      CFTC_DATA = CFTC_DATA || {codes:{}};
+      cftcReady = true;
+      checkSummaryReady();
     });
 }
 loadCftc();
@@ -1467,12 +1658,12 @@ function summaryProdYoYAgg(usdaComm, countryList){
   return yoyPct(cur, pr0);
 }
 
-function summaryStuPctile(usdaComm, yearDataFn){
+function summaryStuPctile(usdaComm, yearDataFn, world){
   const years = summaryYearsSorted(usdaComm);
   if(!years.length) return null;
-  const hist = years.map(y=>getStu(yearDataFn(y))).filter(v=>v!==null);
+  const hist = years.map(y=>getStu(yearDataFn(y), world)).filter(v=>v!==null);
   const latestYear = years[years.length-1];
-  const v = getStu(yearDataFn(latestYear));
+  const v = getStu(yearDataFn(latestYear), world);
   if(v===null || !hist.length) return null;
   return {p: hist.filter(x=>x<=v).length/hist.length*100, v};   // rank vs history, and the actual stocks/use %
 }
@@ -1498,12 +1689,12 @@ function summaryProdYoYAggCombined(commList, countryList){
   const pr0 = (prevAgg && prevAgg.pr!==undefined) ? prevAgg.pr : null;
   return yoyPct(cur, pr0);
 }
-function summaryStuPctileCombined(commList, entityFn){
+function summaryStuPctileCombined(commList, entityFn, world){
   const years = commodityGroupAllYears(commList);
   if(!years.length) return null;
-  const hist = years.map(y=>getStu(sumAcrossOils(entityFn, y, commList))).filter(v=>v!==null);
+  const hist = years.map(y=>getStu(sumAcrossOils(entityFn, y, commList), world)).filter(v=>v!==null);
   const latestYear = years[years.length-1];
-  const v = getStu(sumAcrossOils(entityFn, latestYear, commList));
+  const v = getStu(sumAcrossOils(entityFn, latestYear, commList), world);
   if(v===null || !hist.length) return null;
   return {p: hist.filter(x=>x<=v).length/hist.length*100, v};
 }
@@ -1517,10 +1708,11 @@ function summaryPctileClass(p){
 
 function summaryPctileText(p){ return p===null||p===undefined ? '—' : cftcOrdinal(p); }
 // Stocks-to-use cell: just the rank vs history (the actual stocks/use % is in the hover text)
-function summaryStuCell(o, first){
+function summaryStuCell(o, first, world){
   const cls = (first ? 'grp-l ' : '') + summaryPctileClass(o ? o.p : null);
-  if(!o) return `<td class="${cls}">—</td>`;
-  return `<td class="${cls}" title="Rank vs history (higher = looser) · stocks/use ${fmtStu(o.v)}">${summaryPctileText(o.p)}</td>`;
+  const def = world ? 'ending stocks / domestic use' : 'ending stocks / (domestic use + exports)';
+  if(!o) return `<td class="${cls}" title="${def} — not available">not available</td>`;
+  return `<td class="${cls}" title="Rank vs history (higher = looser) · ${def} ${fmtStu(o.v)}">${summaryPctileText(o.p)}</td>`;
 }
 
 // This week and the week after it. After the last slot ("Dec 28") the next week is early January; slot 0 ("Dec 29") is
@@ -1597,7 +1789,7 @@ function buildSummaryTable(){
       html += `<tr class="cftc-row-section"><td colspan="${totalCols}">${curSection}</td></tr>`;
     }
 
-    const countries = DATA[row.usdaComm] || {};
+    const countries = (DATA && DATA[row.usdaComm]) || {};
     const expList = row.combinedList ? row.combinedExporters : (EXPORTERS[row.usdaComm]||[]).filter(c=>countries[c]);
 
     // Seasonality: this week and next
@@ -1612,13 +1804,13 @@ function buildSummaryTable(){
     if(row.combinedList){
       domesticYoY = summaryProdYoYCombined(row.combinedList, row.domestic);
       exportersYoY = summaryProdYoYAggCombined(row.combinedList, expList);
-      domesticStu = summaryStuPctileCombined(row.combinedList, (cm,yr)=>(DATA[cm]&&DATA[cm][row.domestic])?DATA[cm][row.domestic][yr]:undefined);
-      worldStu = summaryStuPctileCombined(row.combinedList, (cm,yr)=>(DATA[cm]&&DATA[cm]['World'])?DATA[cm]['World'][yr]:undefined);
+      domesticStu = summaryStuPctileCombined(row.combinedList, (cm,yr)=>(DATA[cm]&&DATA[cm][row.domestic])?DATA[cm][row.domestic][yr]:undefined, false);
+      worldStu = summaryStuPctileCombined(row.combinedList, (cm,yr)=>(DATA[cm]&&DATA[cm]['World'])?DATA[cm]['World'][yr]:undefined, true);
     } else {
       domesticYoY = summaryProdYoY(row.usdaComm, row.domestic);
       exportersYoY = summaryProdYoYAgg(row.usdaComm, expList);
-      domesticStu = summaryStuPctile(row.usdaComm, y=>(countries[row.domestic]||{})[y]);
-      worldStu = summaryStuPctile(row.usdaComm, y=>(countries['World']||{})[y]);
+      domesticStu = summaryStuPctile(row.usdaComm, y=>(countries[row.domestic]||{})[y], false);
+      worldStu = summaryStuPctile(row.usdaComm, y=>(countries['World']||{})[y], true);
     }
 
     // Export Sales — Total Commitment YoY
@@ -1632,10 +1824,12 @@ function buildSummaryTable(){
     seasPair.forEach((seas, k)=>{
       const first = k===0 ? 'grp-l' : '';
       if(!seas){
-        html += `<td class="${first}" style="color:var(--text3)">—</td>`;
+        html += `<td class="${first}" style="color:var(--text3)">not available</td>`;
       } else {
         const text = (seas.value>0?'+':'')+seas.value;
-        html += `<td class="${first}" style="background:${seasonalColor(seas.value)};color:#111;font-weight:800" title="Week of ${seas.label}">${text}</td>`;
+        const reviewed = (typeof SEASONALS_REVIEWED==='string') ? fmtCaDate(parseAnyDate(SEASONALS_REVIEWED)) : 'not available';
+        const reviewNote = seasonalsStatus().stale ? ' Review expired.' : '';
+        html += `<td class="${first}" style="background:${seasonalColor(seas.value)};color:#111;font-weight:800" title="Week of ${seas.label}. Manual score, last reviewed ${reviewed}.${reviewNote}">${text}</td>`;
       }
     });
     if(!m){
@@ -1649,8 +1843,8 @@ function buildSummaryTable(){
     html += `<td class="grp-l ${domesticYoY>=0?'cftc-up':'cftc-dn'}">${cftcSignedPct(domesticYoY,1)}</td>`;
     html += `<td class="${exportersYoY>=0?'cftc-up':'cftc-dn'}">${cftcSignedPct(exportersYoY,1)}</td>`;
     html += `<td class="grp-l ${totalCommitYoY>=0?'cftc-up':'cftc-dn'}">${totalCommitYoY===null?'—':cftcSignedPct(totalCommitYoY,1)}</td>`;
-    html += summaryStuCell(domesticStu, true);
-    html += summaryStuCell(worldStu, false);
+    html += summaryStuCell(domesticStu, true, false);
+    html += summaryStuCell(worldStu, false, true);
     html += `</tr>`;
   });
 
@@ -1752,10 +1946,12 @@ function buildWeatherFootnote(){
     when = isNaN(dt) ? String(meta.fetched_at)
       : dt.toLocaleString('en-US', {month:'short', day:'numeric', year:'numeric', hour:'numeric', minute:'2-digit', timeZoneName:'short'});
   }
-  let txt = 'Weather models: Open-Meteo best-match blend of national weather models (incl. NOAA GFS/HRRR, ECMWF IFS, DWD ICON, GEM) for recent conditions and the 14-day forecast; normals from 10 years of ERA5 reanalysis';
+  let txt = 'Each row is a point reading at the named station (one Open-Meteo grid point). It is not a provincial, state, or regional average. Models: Open-Meteo best-match blend of national weather models (incl. NOAA GFS/HRRR, ECMWF IFS, DWD ICON, GEM) for recent conditions and the 14-day forecast; normals from 10 years of ERA5 reanalysis';
   if(hasOutlook) txt += '; outlook from the ECMWF SEAS5 seasonal ensemble (a lean, not a forecast)';
   txt += '.';
-  if(when) txt += ' As of ' + escHtml(when) + ' weather run.';
+  if(when) txt += ' Last successful fetch ' + escHtml(when) + '.';
+  else txt += ' Last successful fetch: not available.';
+  txt += ' Source release date: not available.';
   if(meta.outlook_error) txt += ' Outlook incomplete: ' + escHtml(meta.outlook_error) + '.';
   return txt;
 }
@@ -1789,7 +1985,7 @@ function buildWeatherTable(){
   const totalCols = 1 + groups.reduce((sum,g)=>sum+g.cols.length,0);
   const pcts = colPercents([23, ...groups.flatMap(g=>g.cols.map(c=>c.w))]);
   let html = `<table class="weather-table"><colgroup>${pcts.map(pc=>`<col style="width:${pc}">`).join('')}`;
-  html += `</colgroup><thead><tr><th rowspan="2" style="text-align:left">Region</th>`;
+  html += `</colgroup><thead><tr><th rowspan="2" style="text-align:left">Station</th>`;
   groups.forEach(g=>{ html += `<th colspan="${g.cols.length}" class="grp-l" style="text-align:center;color:var(--amber);font-size:12px;letter-spacing:.08em">${g.label}</th>`; });
   html += `</tr><tr>`;
   groups.forEach(g=>{
@@ -1806,7 +2002,10 @@ function buildWeatherTable(){
       curDiv = d.division;
       html += `<tr class="cftc-row-section"><td colspan="${totalCols}">${curDiv}</td></tr>`;
     }
-    html += `<tr><td>${name}</td>`;
+    const coords = (d.latitude===undefined || d.latitude===null || d.longitude===undefined || d.longitude===null)
+      ? '' : `${Number(d.latitude).toFixed(1)}, ${Number(d.longitude).toFixed(1)}`;
+    const tip = 'Point reading' + (coords ? ' at ' + coords : '') + '. Not a provincial, state, or regional average.';
+    html += `<tr><td title="${escHtml(tip)}">${escHtml(name)} <span class="wx-point">point</span></td>`;
     html += `<td class="grp-l ${weatherDirClass(d.precip_90d_pct_normal, true, PRECIP_BAND)}">${fmtPctNormalWithMm(d.precip_90d_pct_normal, d.precip_90d_mm)}</td>`;
     html += `<td class="${weatherDirClass(d.precip_30d_pct_normal, true, PRECIP_BAND)}">${fmtPctNormalWithMm(d.precip_30d_pct_normal, d.precip_30d_mm)}</td>`;
     html += `<td class="${weatherDirClass(d.temp_dep_7d_c, false)}">${fmtTempDep(d.temp_dep_7d_c)}</td>`;
@@ -1873,15 +2072,18 @@ function renderSummary(){
   { const d = latestCftcDate(); if(d) asOf.push('CFTC ' + fmtAsOfDate(d, true)); }
   { const d = parseAnyDate(DATA && DATA._meta && DATA._meta.wasde_release); if(d) asOf.push('USDA ' + fmtAsOfDate(d, false) + ' WASDE'); }
   { const d = latestExportsDate(); if(d) asOf.push('Exports wk ending ' + fmtAsOfDate(d, true)); }
-  setMetaLines('summary-meta', stamps.length ? stamps[0] : 'unknown', asOf.length ? 'Data as of: ' + asOf.join(' · ') : '');
-  root.insertAdjacentHTML('beforeend', buildSummaryTable());
+  const flags = [summarySourceStale()];
+  setMetaLines('summary-meta', stamps.length ? stamps[0] : null, asOf.length ? 'Data as of: ' + asOf.join(' · ') : '', flags[0]);
+  root.insertAdjacentHTML('beforeend', summarySourceStrips());
+  root.insertAdjacentHTML('beforeend', `<div class="panel"><div class="panel-hdr"><span class="panel-title">Cross-market</span></div>${buildSummaryTable()}</div>`);
 
   root.insertAdjacentHTML('beforeend', `<div class="page-footnote"><ul>
     <li>Domestic = United States, except Canola (Canada) and Coffee/Sugar (Brazil), the actual major producers. Those rows have no Export Sales YoY.</li>
     <li>Soyoil (Vegoils) and Soymeal (Meal): Seasonality, Positioning and Export Sales use Soybean Oil / Soybean Meal. Production YoY and Stocks/Use Rank combine all oils / all meals.</li>
     <li>Cocoa: Positioning and Seasonality only. USDA doesn't track cocoa.</li>
     <li>Seasonality: this week and next. Positioning Change = the week's move in net position (contracts); same direction as the net position = adding, opposite = unwinding.</li>
-    <li>Coffee and Sugar use USDA's semi-annual reports, not the monthly WASDE shown in the header.</li>
+    <li>Coffee and sugar use USDA's semi-annual reports. That release date is not in the file, so it shows as not available.</li>
+    <li>World stocks-to-use is ending stocks divided by domestic use. The domestic column is ending stocks divided by domestic use plus exports.</li>
   </ul></div>`);
 }
 
@@ -1891,18 +2093,18 @@ function renderWeatherPage(){
   if(!root) return;
   root.innerHTML = '';
   const stamp = WEATHER_DATA && WEATHER_DATA._meta && WEATHER_DATA._meta.fetched_at;
-  setMetaLines('weather-meta', weatherState === 'loading' ? 'loading…' : (stamp || 'unavailable'), '');
-  root.insertAdjacentHTML('beforeend', `<div class="cftc-row-section" style="padding:8px 10px;border-top:2px solid var(--amber);color:var(--amber);font-weight:900;text-transform:uppercase;letter-spacing:.16em;font-size:13px;margin:0">Weather — Major Growing Regions</div>`);
+  const wst = weatherStatus();
+  setMetaLines('weather-meta', weatherState === 'loading' ? null : stamp, 'Point readings at named stations', weatherState==='idle' ? null : wst.stale);
+  root.insertAdjacentHTML('beforeend', `<div class="panel"><div class="panel-hdr"><span class="panel-title">Weather</span><span class="panel-sub">point readings at named stations</span></div>${freshStrip(wst.parts, weatherState==='idle'||weatherState==='loading' ? null : wst.stale)}`);
   if(WEATHER_DATA){
     root.insertAdjacentHTML('beforeend', `<div class="tbl-wrap">${buildWeatherTable()}</div>`);
   } else {
-    root.insertAdjacentHTML('beforeend', `<div style="padding:18px 0;color:var(--text3)">${weatherState==='loading' ? 'Loading weather…' : ''}</div>`);
+    root.insertAdjacentHTML('beforeend', `<div style="padding:18px 0;color:var(--text3)">${weatherState==='loading' ? 'Loading station readings…' : (weatherState==='failed' ? 'Weather readings: not available' : 'Station readings load when this page is opened.')}</div>`);
   }
+  root.insertAdjacentHTML('beforeend', `</div>`);
   root.insertAdjacentHTML('beforeend', `<div style="font-size:11px;color:var(--text3);margin:8px 0 0">${buildWeatherFootnote()}</div>`);
 
-  root.insertAdjacentHTML('beforeend', `<div class="cftc-row-section" style="padding:8px 10px;border-top:2px solid var(--amber);color:var(--amber);font-weight:900;text-transform:uppercase;letter-spacing:.16em;font-size:13px;margin:28px 0 0">Crop Calendar — Major Origins</div>`);
-  root.insertAdjacentHTML('beforeend', `<div style="font-size:11px;color:var(--text3);margin:10px 0"><span style="background:rgba(46,143,82,.30);padding:1px 6px;border-radius:2px">P</span> Planting &nbsp; <span style="background:rgba(230,180,20,.40);padding:1px 6px;border-radius:2px">H</span> Harvest — standard reference windows, not live data; actual dates shift with weather and region within each country.</div>`);
-  root.insertAdjacentHTML('beforeend', `<div class="tbl-wrap">${buildCropCalendarTable()}</div>`);
+  root.insertAdjacentHTML('beforeend', `<div class="panel" style="margin-top:28px"><div class="panel-hdr"><span class="panel-title">Crop calendar</span><span class="panel-sub">static reference</span></div>${freshStrip(['Source release: not available','Last fetch: not available','Not a live feed'], null)}<div style="font-size:11px;color:var(--text3);margin:10px 16px"><span style="background:rgba(46,143,82,.30);padding:1px 6px;border-radius:2px">P</span> Planting &nbsp; <span style="background:rgba(230,180,20,.40);padding:1px 6px;border-radius:2px">H</span> Harvest — standard reference windows, not live data. Actual dates shift with weather and with the area inside each country.</div><div class="tbl-wrap">${buildCropCalendarTable()}</div></div>`);
 }
 renderWeatherPage();   // the crop calendar is static, so draw the page right away; the weather table fills in when its data arrives
 </script>
@@ -1954,6 +2156,9 @@ const SEASONALS_DATA = {
   'NY Cocoa': [2,1,3,-1,-1,-1,4,5,1,-1,-1,4,-2,4,5,5,1,2,-1,-3,1,-5,-3,-3,-5,-1,5,-1,-2,-4,-3,-1,5,-1,-1,2,-2,2,-2,-3,-3,4,-2,-3,3,3,4,0,3,3,0,-3,-3],
   'London Cocoa': [-3,1,1,-2,-1,4,-3,-1,-1,1,-3,4,2,-2,-3,1,-1,4,2,4,4,-4,-3,-1,0,2,-2,4,-4,1,-3,1,-1,-3,-1,-3,2,-1,-4,1,-3,-5,-3,-3,3,4,4,-2,1,3,0,-3,-4],
 };
+// Date the score table above last changed in this repository. Update it when the scores are reviewed.
+const SEASONALS_REVIEWED = '2026-10-24';
+const SEASONALS_METHOD = 'Manually entered forward-looking weekly score, from −5 to +5, using a 15-year lookback. The figures are typed in. This page does not recompute them from a price series.';
 
 function seasonalColor(v){
   if(v===null||v===undefined) return '#fff';
@@ -1990,11 +2195,52 @@ function defaultSeasonalsMonth(){
   return months.includes(nowAbbr) ? nowAbbr : months[0];
 }
 
+function seasWindowYear(startMonth){
+  const today = new Date(); today.setHours(0,0,0,0);
+  const s = SEAS_MONTHS.indexOf(startMonth);
+  const candidates = [];
+  for(const yr of [today.getFullYear()-1, today.getFullYear(), today.getFullYear()+1]){
+    const start = new Date(yr, s, 1);
+    const end = new Date(yr, s+3, 0); end.setHours(23,59,59,999);
+    candidates.push({yr, start, end, contains: start<=today && today<=end});
+  }
+  const hit = candidates.find(c=>c.contains);
+  if(hit) return hit.yr;
+  const upcoming = candidates.filter(c=>c.start>today).sort((a,b)=>a.start-b.start)[0];
+  if(upcoming && (upcoming.start-today) <= 270*86400000) return upcoming.yr;
+  const past = candidates.filter(c=>c.end<today).sort((a,b)=>b.end-a.end)[0];
+  return past ? past.yr : today.getFullYear();
+}
+function seasWeekBounds(label, windowYear, startMonth){
+  const parts = label.split(' ');
+  const mon = SEAS_MONTHS.indexOf(parts[0]);
+  const s = SEAS_MONTHS.indexOf(startMonth);
+  let yr = windowYear;
+  if(label==='Dec 29') yr = windowYear - 1;
+  else if(mon < s) yr = windowYear + 1;
+  const start = new Date(yr, mon, parseInt(parts[1],10)); start.setHours(0,0,0,0);
+  const end = new Date(start); end.setDate(end.getDate()+6); end.setHours(23,59,59,999);
+  return {start, end};
+}
+function seasWeekExpired(bounds){
+  const today = new Date(); today.setHours(0,0,0,0);
+  return bounds.end < today;
+}
+function seasonalsWindowState(startMonth){
+  const cols = seasWindow(startMonth).cols;
+  const year = seasWindowYear(startMonth);
+  const flags = cols.map(o=>seasWeekExpired(seasWeekBounds(o.w, year, startMonth)));
+  return {year, flags, expired: flags.filter(Boolean).length, total: flags.length};
+}
 function buildSeasonalsTable(startMonth){
   const cols = seasWindow(startMonth).cols;   // rolling quarter: selected month + next 2 (wraps at year end)
+  const year = seasWindowYear(startMonth);
 
   let html = `<table class="seas-table"><thead><tr><th class="seas-label-h">Product</th>`;
-  cols.forEach(o=>{ html += `<th>${o.w}</th>`; });
+  cols.forEach(o=>{
+    const expired = seasWeekExpired(seasWeekBounds(o.w, year, startMonth));
+    html += `<th${expired?' class="seas-expired" title="Expired window — this week has ended"':''}>${o.w}${expired?'<div class="seas-exp-tag">expired</div>':''}</th>`;
+  });
   html += `</tr></thead><tbody>`;
 
   SEASONALS_SECTIONS.forEach(section=>{
@@ -2004,8 +2250,9 @@ function buildSeasonalsTable(startMonth){
       html += `<tr><td class="seas-label">${p}</td>`;
       cols.forEach(o=>{
         const v = vals[o.i];
-        const text = (v===null||v===undefined) ? '—' : (v>0?'+':'')+v;
-        html += `<td style="background:${seasonalColor(v)}">${text}</td>`;
+        const expired = seasWeekExpired(seasWeekBounds(o.w, year, startMonth));
+        const text = (v===null||v===undefined) ? 'not available' : (v>0?'+':'')+v;
+        html += `<td${expired?' class="seas-expired" title="Expired window — this week has ended"':''} style="background:${seasonalColor(v)}">${text}${expired?'<div class="seas-exp-tag">expired</div>':''}</td>`;
       });
       html += `</tr>`;
     });
@@ -2018,12 +2265,27 @@ function renderSeasonals(){
   if(!seasonalsMonth) seasonalsMonth = defaultSeasonalsMonth();
   const months = getSeasonalsMonths();
   const root = document.getElementById('seasonals-root');
+  const st = seasonalsStatus();
+  const win = seasonalsWindowState(seasonalsMonth);
   let selHtml = `<div class="toggle" style="margin-bottom:16px;display:inline-flex">`;
   months.forEach(m=>{
     selHtml += `<button class="tbtn seas-month-btn${m===seasonalsMonth?' active':''}" data-m="${m}">${m}</button>`;
   });
-  selHtml += `</div><div style="font-size:12px;color:var(--text3);margin-bottom:10px">Showing ${seasWindow(seasonalsMonth).window[0]} through ${seasWindow(seasonalsMonth).window[2]}</div>`;
-  root.innerHTML = selHtml + buildSeasonalsTable(seasonalsMonth) + `<div class="page-footnote">Forward-looking weekly seasonal score (-5 to +5), 15-year lookback. Static — manually entered, not auto-updating.</div>`;
+  const firstWeek = seasWindow(seasonalsMonth).cols[0];
+  const lastWeek = seasWindow(seasonalsMonth).cols[seasWindow(seasonalsMonth).cols.length-1];
+  const firstBounds = firstWeek ? seasWeekBounds(firstWeek.w, win.year, seasonalsMonth) : null;
+  const lastBounds = lastWeek ? seasWeekBounds(lastWeek.w, win.year, seasonalsMonth) : null;
+  const spanTxt = (firstBounds && lastBounds)
+    ? `${seasWindow(seasonalsMonth).window[0]} ${firstBounds.start.getFullYear()} through ${seasWindow(seasonalsMonth).window[2]} ${lastBounds.start.getFullYear()}`
+    : `${seasWindow(seasonalsMonth).window[0]} through ${seasWindow(seasonalsMonth).window[2]}`;
+  selHtml += `</div><div style="font-size:12px;color:var(--text3);margin-bottom:10px">Showing ${spanTxt}</div>`;
+  let banner = '';
+  if(st.stale===true) banner += `<div class="fresh-warn">Review expired. Last reviewed ${fmtCaDate(parseAnyDate(SEASONALS_REVIEWED))}. The scores below are the last figures entered. Nothing has been filled in since.</div>`;
+  if(win.total && win.expired===win.total) banner += `<div class="fresh-warn">This window has expired. Every week shown has already ended.</div>`;
+  else if(win.expired) banner += `<div class="fresh-warn">${win.expired} week${win.expired===1?'':'s'} in this window ${win.expired===1?'has':'have'} expired.</div>`;
+  setMetaLines('seasonals-meta', null, 'Last reviewed ' + fmtCaDate(parseAnyDate(SEASONALS_REVIEWED)), st.stale);
+  const method = `<div class="panel"><div class="panel-hdr"><span class="panel-title">Seasonal scores</span><span class="panel-sub">manual</span></div>${freshStrip(st.parts, st.stale)}<div style="padding:10px 16px 14px;font-size:13px;color:var(--text2);line-height:1.5">${SEASONALS_METHOD}</div></div>`;
+  root.innerHTML = method + selHtml + banner + `<div class="panel"><div class="panel-hdr"><span class="panel-title">Weekly scores</span></div>${freshStrip(st.parts, st.stale)}<div class="tbl-wrap">${buildSeasonalsTable(seasonalsMonth)}</div></div>` + `<div class="page-footnote">Forward-looking weekly seasonal score (−5 to +5), 15-year lookback. Manually entered, not auto-updating. A week marked expired has already ended. Last reviewed ${fmtCaDate(parseAnyDate(SEASONALS_REVIEWED))}.</div>`;
   root.querySelectorAll('.seas-month-btn').forEach(b=>{
     b.addEventListener('click', ()=>{ seasonalsMonth = b.dataset.m; renderSeasonals(); });
   });
@@ -2181,15 +2443,15 @@ function buildExportsCountryTable(commName){
 function renderExports(){
   const root = document.getElementById('exports-root');
   root.innerHTML = '';
-  { const d = latestExportsDate(); setMetaLines('exports-meta', EXPORTS_DATA._meta?.fetched_at, d ? 'Week ending ' + fmtAsOfDate(d, true) : ''); }
+  const st = exportsStatus();
+  setMetaLines('exports-meta', EXPORTS_DATA._meta?.fetched_at, st.parts.slice(0,2).join(' · '), st.stale);
 
   const commodities = Object.keys(EXPORTS_DATA.commodities || {});
   if(!exportsCommodity || !commodities.includes(exportsCommodity)){
     exportsCommodity = commodities[0];
   }
 
-  root.insertAdjacentHTML('beforeend', `<div class="cftc-row-section" style="padding:8px 10px;border-top:2px solid var(--amber);color:var(--amber);font-weight:900;text-transform:uppercase;letter-spacing:.16em;font-size:13px;margin-bottom:0">Commodity Summary — YTD vs Prior Year<span class="exp-hint">click a commodity to see its detail below</span></div>`);
-  root.insertAdjacentHTML('beforeend', buildExportsSummaryTable());
+  root.insertAdjacentHTML('beforeend', `<div class="panel"><div class="panel-hdr"><span class="panel-title">Commodity summary</span><span class="panel-sub">YTD vs prior year — click a row for the detail</span></div>${freshStrip(st.parts, st.stale)}${buildExportsSummaryTable()}</div>`);
   root.insertAdjacentHTML('beforeend', `<div id="exports-detail"></div>`);
   root.insertAdjacentHTML('beforeend', `<div class="page-footnote">Metric tons (cotton: running bales); current marketing year only. Net Sales = new sales this week, net of cancellations · Outstanding = sold, not yet shipped · Accum. Exports = shipped YTD · Total Commitment = Accum. + Outstanding. Week over Week lists each weekly report, newest first.</div>`);
 
@@ -2208,20 +2470,27 @@ function renderExportsDetail(){
   const title = exportsView === 'wow'
     ? `Week over Week — ${exportsCommodity}`
     : `By Country — ${exportsCommodity} — Largest to Smallest`;
-  let html = `<div class="cftc-row-section" style="padding:8px 10px;border-top:2px solid var(--amber);color:var(--amber);font-weight:900;text-transform:uppercase;letter-spacing:.16em;font-size:13px;margin:24px 0 0">${title}</div>`;
+  const st = exportsStatus();
+  let html = `<div class="panel" style="margin-top:22px"><div class="panel-hdr"><span class="panel-title">${title}</span></div>${freshStrip(st.parts, st.stale)}`;
   html += `<div class="toggle" style="display:inline-flex;margin:14px 0"><button class="tbtn exp-view-btn${exportsView==='country'?' active':''}" data-v="country">Country Breakdown</button><button class="tbtn exp-view-btn${exportsView==='wow'?' active':''}" data-v="wow">Week over Week</button></div>`;
   html += exportsView === 'wow' ? buildExportsWowTable(exportsCommodity) : buildExportsCountryTable(exportsCommodity);
+  html += `</div>`;
   box.innerHTML = html;
   box.querySelectorAll('.exp-view-btn').forEach(b=>b.addEventListener('click', ()=>{ exportsView = b.dataset.v; renderExportsDetail(); }));
 }
 
-// Week-over-week history is optional: without it the toggle still works and says the prior week isn't on file yet.
-fetch('data/export_sales_history.json?_=' + Date.now())
-  .then(r=>{ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
-  .then(h=>{ EXPORTS_HISTORY = h; renderExportsDetail(); })
-  .catch(()=>{ /* not created yet - fine */ });
+// Week-over-week history is only needed on the Exports page, so it stays off the first load.
+let exportHistoryState = 'idle';
+function ensureExportHistory(){
+  if(exportHistoryState==='loading' || exportHistoryState==='ready') return;
+  exportHistoryState = 'loading';
+  fetch('data/export_sales_history.json')
+    .then(r=>{ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
+    .then(h=>{ EXPORTS_HISTORY = h; exportHistoryState = 'ready'; renderExportsDetail(); })
+    .catch(()=>{ exportHistoryState = 'failed'; });
+}
 
-fetch('data/export_sales.json?_=' + Date.now())
+fetch('data/export_sales.json')
   .then(r=>{ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
   .then(data=>{
     EXPORTS_DATA = data;
@@ -2297,13 +2566,13 @@ function sumAcrossOils(entityFn, year, commList){
   return out;
 }
 
-function buildOilBalanceTable(yearDataFn, years, includeYoy, allYearsFull){
+function buildOilBalanceTable(yearDataFn, years, includeYoy, allYearsFull, worldStu){
   const latestYear = years[years.length-1];
   const prevYear = years.length>1 ? years[years.length-2] : null;
   const fullYears = allYearsFull || years;
-  const stuHistory = fullYears.map(y => getStu(yearDataFn(y))).filter(v => v!==null);
+  const stuHistory = fullYears.map(y => getStu(yearDataFn(y), worldStu)).filter(v => v!==null);
   function stuPctile(y){
-    const v = getStu(yearDataFn(y));
+    const v = getStu(yearDataFn(y), worldStu);
     if(v===null || stuHistory.length===0) return null;
     const countLE = stuHistory.filter(x => x<=v).length;
     return (countLE/stuHistory.length)*100;
@@ -2321,13 +2590,13 @@ function buildOilBalanceTable(yearDataFn, years, includeYoy, allYearsFull){
     {type:'total', keys:['dc','ex'], label:'Total demand'},
     {type:'section', label:'Balance'},
     {type:'row', key:'es', label:'Ending stocks', cls:'row-ending'},
-    {type:'stu', label:'Stocks / Use %', cls:'row-stu'},
-    {type:'stu_pctile', label:'S/U Percentile Rank (' + fullYears.length + 'yr hist)', cls:'row-pctile'},
+    {type:'stu', label: worldStu ? 'Stocks / use % — ending / domestic use' : 'Stocks / use % — ending / (domestic use + exports)', cls:'row-stu'},
+    {type:'stu_pctile', label:'S/U percentile rank (' + fullYears.length + 'yr hist)', cls:'row-pctile'},
   ];
 
   function valFromYd(row, yd){
     if(row.type==='total') return getTotalRaw(yd, row.keys);
-    if(row.type==='stu') return getStu(yd);
+    if(row.type==='stu') return getStu(yd, worldStu);
     return getRaw(yd, row.key);
   }
   function displayVal(row, y){
@@ -2400,7 +2669,7 @@ function buildOilBalanceTable(yearDataFn, years, includeYoy, allYearsFull){
 }
 
 function vegoilPanelWrap(title, sub, innerHtml){
-  return `<div class="panel"><div class="panel-hdr"><span class="panel-title">${title}</span><span class="panel-sub">${sub}</span></div>${innerHtml}</div>`;
+  return `<div class="panel"><div class="panel-hdr"><span class="panel-title">${title}</span><span class="panel-sub">${sub}</span></div>${usdaFreshStrip()}${innerHtml}</div>`;
 }
 
 function renderVegoilsInto(root){
@@ -2411,17 +2680,17 @@ function renderVegoilsInto(root){
   // World — combined across all 4 oils
   root.insertAdjacentHTML('beforeend', `<div class="sec-hdr">World Balance Sheet — Vegetable Oils (Combined)</div>`);
   root.insertAdjacentHTML('beforeend', vegoilPanelWrap('WORLD', '1000 MT — Palm + Soybean + Rapeseed + Sunflower',
-    buildOilBalanceTable(y=>sumAcrossOils((oil,yr)=>(DATA[oil]&&DATA[oil]['World'])?DATA[oil]['World'][yr]:undefined, y), years7, true, yearsAll)));
+    buildOilBalanceTable(y=>sumAcrossOils((oil,yr)=>(DATA[oil]&&DATA[oil]['World'])?DATA[oil]['World'][yr]:undefined, y), years7, true, yearsAll, true)));
 
   // Major Exporters — combined
   root.insertAdjacentHTML('beforeend', `<div class="sec-hdr">Major Exporters — Aggregate (Combined)</div>`);
   root.insertAdjacentHTML('beforeend', vegoilPanelWrap('MAJOR EXPORTERS', VEGOIL_EXPORTERS.join(', '),
-    buildOilBalanceTable(y=>sumAcrossOils((oil,yr)=>sumCountries(DATA[oil]||{}, VEGOIL_EXPORTERS, yr), y), years7, true, yearsAll)));
+    buildOilBalanceTable(y=>sumAcrossOils((oil,yr)=>sumCountries(DATA[oil]||{}, VEGOIL_EXPORTERS, yr), y), years7, true, yearsAll, false)));
 
   // Major Importers — combined
   root.insertAdjacentHTML('beforeend', `<div class="sec-hdr">Major Importers — Aggregate (Combined)</div>`);
   root.insertAdjacentHTML('beforeend', vegoilPanelWrap('MAJOR IMPORTERS', VEGOIL_IMPORTERS.join(', '),
-    buildOilBalanceTable(y=>sumAcrossOils((oil,yr)=>sumCountries(DATA[oil]||{}, VEGOIL_IMPORTERS, yr), y), years7, true, yearsAll)));
+    buildOilBalanceTable(y=>sumAcrossOils((oil,yr)=>sumCountries(DATA[oil]||{}, VEGOIL_IMPORTERS, yr), y), years7, true, yearsAll, false)));
 
   // Individual oil/country panels — single oil each, not combined
   root.insertAdjacentHTML('beforeend', `<div class="sec-hdr">Individual Exporters — By Oil</div>`);
@@ -2433,9 +2702,10 @@ function renderVegoilsInto(root){
     const oilYears7 = oilYears.slice(-VEGOIL_HIST_YEARS);
     if(!oilYears7.length) return;
     stack.insertAdjacentHTML('beforeend', vegoilPanelWrap(`${p.country.toUpperCase()} — ${p.oil.toUpperCase()}`, '1000 MT',
-      buildOilBalanceTable(y=>(countries[p.country]||{})[y], oilYears7, true, oilYears)));
+      buildOilBalanceTable(y=>(countries[p.country]||{})[y], oilYears7, true, oilYears, false)));
   });
   root.appendChild(stack);
+  root.insertAdjacentHTML('beforeend', STU_NOTE);
 }
 
 // ---------------- MEAL COMPLEX (Soybean / Rapeseed / Sunflower meal) ----------------
@@ -2457,15 +2727,15 @@ function renderMealInto(root){
 
   root.insertAdjacentHTML('beforeend', `<div class="sec-hdr">World Balance Sheet — Meal (Combined)</div>`);
   root.insertAdjacentHTML('beforeend', vegoilPanelWrap('WORLD', '1000 MT — Soybean + Rapeseed + Sunflower meal',
-    buildOilBalanceTable(y=>sumAcrossOils((m,yr)=>(DATA[m]&&DATA[m]['World'])?DATA[m]['World'][yr]:undefined, y, MEALS), years7, true, yearsAll)));
+    buildOilBalanceTable(y=>sumAcrossOils((m,yr)=>(DATA[m]&&DATA[m]['World'])?DATA[m]['World'][yr]:undefined, y, MEALS), years7, true, yearsAll, true)));
 
   root.insertAdjacentHTML('beforeend', `<div class="sec-hdr">Major Exporters — Aggregate (Combined)</div>`);
   root.insertAdjacentHTML('beforeend', vegoilPanelWrap('MAJOR EXPORTERS', MEAL_EXPORTERS.join(', '),
-    buildOilBalanceTable(y=>sumAcrossOils((m,yr)=>sumCountries(DATA[m]||{}, MEAL_EXPORTERS, yr), y, MEALS), years7, true, yearsAll)));
+    buildOilBalanceTable(y=>sumAcrossOils((m,yr)=>sumCountries(DATA[m]||{}, MEAL_EXPORTERS, yr), y, MEALS), years7, true, yearsAll, false)));
 
   root.insertAdjacentHTML('beforeend', `<div class="sec-hdr">Major Importers — Aggregate (Combined)</div>`);
   root.insertAdjacentHTML('beforeend', vegoilPanelWrap('MAJOR IMPORTERS', MEAL_IMPORTERS.join(', '),
-    buildOilBalanceTable(y=>sumAcrossOils((m,yr)=>sumCountries(DATA[m]||{}, MEAL_IMPORTERS, yr), y, MEALS), years7, true, yearsAll)));
+    buildOilBalanceTable(y=>sumAcrossOils((m,yr)=>sumCountries(DATA[m]||{}, MEAL_IMPORTERS, yr), y, MEALS), years7, true, yearsAll, false)));
 
   root.insertAdjacentHTML('beforeend', `<div class="sec-hdr">Individual Exporters — By Meal</div>`);
   const stack = document.createElement('div');
@@ -2476,9 +2746,10 @@ function renderMealInto(root){
     const mealYears7 = mealYears.slice(-MEAL_HIST_YEARS);
     if(!mealYears7.length) return;
     stack.insertAdjacentHTML('beforeend', vegoilPanelWrap(`${p.country.toUpperCase()} — ${p.oil.toUpperCase()}`, '1000 MT',
-      buildOilBalanceTable(y=>(countries[p.country]||{})[y], mealYears7, true, mealYears)));
+      buildOilBalanceTable(y=>(countries[p.country]||{})[y], mealYears7, true, mealYears, false)));
   });
   root.appendChild(stack);
+  root.insertAdjacentHTML('beforeend', STU_NOTE);
 }
 </script>
 </body>
