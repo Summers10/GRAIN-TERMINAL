@@ -29,25 +29,26 @@ OUT = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 
 FORECAST_URL = "https://api.open-meteo.com/v1/forecast"
 ARCHIVE_URL = "https://archive-api.open-meteo.com/v1/archive"
  
-# (division, region name, lat, lon) — this order is the order shown on the Summary page.
+# (division, station name, lat, lon). Each row is ONE grid point, not a provincial average.
+# The station name is the nearest town to that point. This order is the order shown on the page.
 REGIONS = [
-    ("Canada", "Alberta (Calgary)", 51.0, -114.1),
-    ("Canada", "Saskatchewan (Regina)", 50.5, -104.6),
-    ("Canada", "Manitoba", 49.8, -99.9),
-    ("United States", "US Midwest (Iowa)", 42.0, -93.5),
-    ("United States", "US Southern Plains (Kansas)", 38.5, -98.0),
-    ("United States", "US Cotton Belt (Texas)", 33.5, -101.5),
-    ("South America", "Brazil (Mato Grosso)", -13.0, -56.0),
-    ("South America", "Brazil (Paraná)", -24.9, -53.5),
-    ("South America", "Argentina (Rosario)", -33.0, -61.0),
-    ("South America", "Argentina (S. Buenos Aires)", -38.0, -60.3),
-    ("Europe", "France", 48.5, 2.5),
-    ("Europe", "Ukraine", 49.0, 32.0),
-    ("Europe", "Southern Russia", 45.0, 40.0),
-    ("Asia", "China (Henan)", 34.5, 114.0),
-    ("Asia", "China (Heilongjiang)", 46.0, 126.5),
-    ("Asia", "Western Australia", -31.5, 117.0),
-    ("Asia", "New South Wales", -32.5, 148.5),
+    ("Canada", "Calgary", 51.0, -114.1),
+    ("Canada", "Regina", 50.5, -104.6),
+    ("Canada", "Brandon", 49.8, -99.9),
+    ("United States", "Ames", 42.0, -93.5),
+    ("United States", "Lyons", 38.5, -98.0),
+    ("United States", "Lubbock", 33.5, -101.5),
+    ("South America", "Lucas do Rio Verde", -13.0, -56.0),
+    ("South America", "Cascavel", -24.9, -53.5),
+    ("South America", "Rosario", -33.0, -61.0),
+    ("South America", "Tres Arroyos", -38.0, -60.3),
+    ("Europe", "Melun", 48.5, 2.5),
+    ("Europe", "Cherkasy", 49.0, 32.0),
+    ("Europe", "Belorechensk", 45.0, 40.0),
+    ("Asia", "Zhengzhou", 34.5, 114.0),
+    ("Asia", "Harbin", 46.0, 126.5),
+    ("Australia", "Cunderdin", -31.5, 117.0),
+    ("Australia", "Dubbo", -32.5, 148.5),
 ]
  
 SEASONAL_URL = "https://seasonal-api.open-meteo.com/v1/seasonal"
@@ -382,7 +383,7 @@ def main():
     result = {"regions": {}}
     missing_regions = []
  
-    for i, (division, name, _lat, _lon) in enumerate(REGIONS):
+    for i, (division, name, lat, lon) in enumerate(REGIONS):
         fc_series = series_to_dict(fc_blocks[i])
         hist_series = hist_series_list[i]
         if not fc_series or not hist_series:
@@ -424,6 +425,9 @@ def main():
  
         result["regions"][name] = {
             "division": division,
+            "latitude": lat,
+            "longitude": lon,
+            "reading": "point",
             "precip_30d_pct_normal": pct_of_normal(precip_30d, precip_30d_normal),
             "precip_30d_mm": precip_30d,
             "precip_90d_pct_normal": pct_of_normal(precip_90d, precip_90d_normal),
@@ -460,7 +464,8 @@ def main():
  
     os.makedirs(os.path.dirname(OUT), exist_ok=True)
     with open(OUT, "w") as f:
-        json.dump(result, f, indent=2)
+        json.dump(result, f, separators=(",", ":"))
+        f.write("\n")
  
     size = os.path.getsize(OUT)
     print(f"\nRegions fetched ({len(result['regions'])}):")

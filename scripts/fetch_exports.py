@@ -469,9 +469,19 @@ def main():
         "source": URL,
     }
 
+    def compact_num(v):
+        if isinstance(v, float) and v.is_integer():
+            return int(v)
+        if isinstance(v, dict):
+            return {k: compact_num(x) for k, x in v.items()}
+        if isinstance(v, list):
+            return [compact_num(x) for x in v]
+        return v
+
     os.makedirs(os.path.dirname(OUT), exist_ok=True)
     with open(OUT, "w") as f:
-        json.dump(result, f, indent=2)
+        json.dump(compact_num(result), f, separators=(",", ":"))
+        f.write("\n")
 
     size = os.path.getsize(OUT)
     print(f"\nCommodities matched ({len(result['commodities'])}):")

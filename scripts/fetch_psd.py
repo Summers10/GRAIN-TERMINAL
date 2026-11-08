@@ -82,9 +82,9 @@ def download_zip(filename):
 # look like marketing-year fields, not release dates), so the release is inferred from USDA's published
 # WASDE schedule: the latest release that was out (noon ET + ~1h for PSD to update) when we pulled.
 # Entirely non-fatal: any problem here just means the page shows no WASDE date, plus a loud warning.
+# The old https://www.usda.gov/oce/commodity/wasde address returns 403, so it is not used.
 WASDE_URLS = [
     "https://www.usda.gov/about-usda/general-information/staff-offices/office-chief-economist/commodity-markets/wasde-report",
-    "https://www.usda.gov/oce/commodity/wasde",
 ]
 # Used only if the page can't be read. Both years confirmed against usda.gov's own schedule (12:00 ET).
 FALLBACK_WASDE_SCHEDULE = [
@@ -410,12 +410,25 @@ def main():
     meta.update(wasde_meta)
     prior = get_prior_snapshot(result, release, schedule)
  
+    # The page only reads these balance-sheet fields. Drop the rest so the file stays small.
+    keep = set(PRIOR_KEYS)
+    for comm, countries in result.items():
+        if comm.startswith("_"):
+            continue
+        for years in countries.values():
+            for rec in years.values():
+                if isinstance(rec, dict):
+                    for key in list(rec):
+                        if key not in keep:
+                            del rec[key]
+
     os.makedirs(os.path.dirname(OUT), exist_ok=True)
     with open(OUT, "w") as f:
         result["_meta"] = meta
         if prior:
             result["_prior"] = prior
-        json.dump(result, f, indent=2)
+        json.dump(result, f, separators=(",", ":"))
+        f.write("\n")
  
     size = os.path.getsize(OUT)
     comms = sorted(k for k in result.keys() if not k.startswith("_"))
