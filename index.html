@@ -25,7 +25,9 @@ body.light{
   --amber:#B8720A;--green:#0E7A3A;--red:#C4302B;
   --th-bg:#F2F3F6;--section-bg:#ECEDF0;--row-alt:#F7F8FA;--row-latest:#FFF3DC;--grp-line:#9AA1AD;--ref-color:#5b6f94;--ref-bg:rgba(91,111,148,.07);
 }
-#topbar{position:sticky;top:0;z-index:10;padding:14px 20px;border-bottom:1px solid var(--amber);background:var(--bg);display:flex;align-items:center;gap:20px;flex-wrap:wrap}
+#topbar{position:sticky;top:0;z-index:10;padding:14px 20px;border-bottom:1px solid var(--amber);background:var(--bg);display:flex;align-items:center;gap:12px 20px;flex-wrap:wrap;max-width:100%}
+#page-tabs,#summary-topbar,#cftc-topbar,#exports-topbar,#weather-topbar,#seasonals-topbar{flex-wrap:wrap;max-width:100%}
+#comm-toggle{flex-wrap:wrap;max-width:100%}
 #topbar h1{font-size:18px;font-weight:900;letter-spacing:.12em;text-transform:uppercase;color:var(--amber);white-space:nowrap}
 #conv-label{font-size:12px;color:var(--text3);letter-spacing:.04em;white-space:nowrap}
 #meta{font-size:13px;color:var(--text3);letter-spacing:.04em;margin-left:auto}
@@ -49,13 +51,14 @@ body.light{
 .wx-point{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);font-weight:800;margin-left:6px}
 .seas-expired{outline:2px dashed var(--red);outline-offset:-2px}
 .seas-exp-tag{display:block;margin-top:2px;font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:var(--red);font-weight:900}
-.tbl-wrap{overflow-x:auto}
-.bal-table{width:100%;border-collapse:collapse;border:1px solid var(--border2);background:var(--bg)}
-.bal-table th{background:var(--th-bg);padding:8px 8px;text-align:right;font-size:14px;font-weight:800;letter-spacing:.05em;color:var(--text2);border-bottom:2px solid var(--border2);white-space:nowrap}
-.bal-table th:first-child{text-align:left;font-size:14px;letter-spacing:.08em}
+.tbl-wrap{max-width:100%}
+.bal-table,.oil-table,.summary-table,.weather-table,.cal-table,.cftc-table,.exp-table,.seas-table{width:100%;max-width:100%;table-layout:fixed;border-collapse:collapse}
+.bal-table{border:1px solid var(--border2);background:var(--bg)}
+.bal-table th{background:var(--th-bg);padding:4px 3px;text-align:right;font-size:11px;font-weight:800;letter-spacing:.02em;color:var(--text2);border-bottom:2px solid var(--border2);white-space:normal;overflow-wrap:anywhere}
+.bal-table th:first-child{text-align:left;letter-spacing:.04em}
 .bal-table th.latest{color:var(--amber);font-weight:900;border-bottom:2px solid var(--amber)}
 .bal-table th.yoy{color:var(--text3);font-style:italic}
-.bal-table td{padding:5px 8px;text-align:right;font-size:15px;font-weight:600;border-bottom:1px solid var(--border);color:var(--text2);white-space:nowrap;background:var(--bg)}
+.bal-table td{padding:3px 3px;text-align:right;font-size:12px;font-weight:600;border-bottom:1px solid var(--border);color:var(--text2);white-space:normal;overflow-wrap:anywhere;background:var(--bg)}
 .bal-table td:first-child{text-align:left;color:var(--text);font-weight:700}
 td.latest{color:var(--amber) !important;font-weight:800 !important}
 .row-section td{background:var(--section-bg);color:var(--text3) !important;font-size:12px !important;font-weight:900;letter-spacing:.12em;text-transform:uppercase;padding:5px 10px 4px;border-top:1px solid var(--border2)}
@@ -172,7 +175,6 @@ document.querySelectorAll('.page-tab').forEach(function(btn){
 <div id="seasonals-page" style="display:none">
 <div id="seasonals-topbar" style="padding:14px 20px;border-bottom:1px solid var(--amber);background:var(--bg);display:flex;align-items:center;gap:20px">
   <h1 style="font-size:18px;font-weight:900;letter-spacing:.12em;text-transform:uppercase;color:var(--amber);white-space:nowrap">Seasonals</h1>
-  <div id="seasonals-meta" style="font-size:13px;color:var(--text3);letter-spacing:.04em;margin-left:auto"></div>
 </div>
   <div id="seasonals-root" style="max-width:100%;margin:0 auto;padding:22px"></div>
 </div>
@@ -232,6 +234,10 @@ function fmt2(v){
   return v.toFixed(1);
 }
 function fmtStu(v){ return v===null ? 'not available' : v.toFixed(1)+'%'; }
+function fitColgroup(weights){
+  const t = weights.reduce((a,b)=>a+b,0);
+  return `<colgroup>${weights.map(w=>`<col style="width:${(w/t*100).toFixed(3)}%">`).join('')}</colgroup>`;
+}
 function ordinal(n){
   const r = Math.round(n);
   const mod100 = r % 100;
@@ -449,10 +455,10 @@ function buildBalanceTable(comm, yearDataFn, years, includeYoy, allYearsFull, wo
     return `<td class="grp-l prior">${pText}</td><td class="${chgClass(chg, d)}">${cText}</td>`;
   }
 
-  let html = `<div class="tbl-wrap"><table class="bal-table"><colgroup><col style="width:175px">`;
-  for(const y of years) html += '<col>';
-  if(includeYoy) html += '<col style="width:75px"><col style="width:100px"><col style="width:80px">';
-  html += `</colgroup><thead><tr><th>ITEM</th>`;
+  const colW = [3.4];
+  years.forEach(()=>colW.push(1));
+  if(includeYoy) colW.push(1.05, 1.45, 1.05);
+  let html = `<div class="tbl-wrap"><table class="bal-table">${fitColgroup(colW)}<thead><tr><th>ITEM</th>`;
   for(const y of years) html += `<th class="${y===latestYear?'latest':''}">${y}</th>`;
   if(includeYoy) html += `<th class="yoy">YoY Δ</th><th class="yoy grp-l">${priorHeader()}</th><th class="yoy">Chg</th>`;
   html += `</tr></thead><tbody>`;
@@ -529,7 +535,10 @@ function panelTitleWithHarvest(comm, country){
 function buildMetricByCountryTable(countryList, countries, years, metric){
   const latestYear = years[years.length-1];
   const prevYear = years.length>1 ? years[years.length-2] : null;
-  let html = `<div class="tbl-wrap"><table class="bal-table"><thead><tr><th>Country</th>`;
+  const colW = [2.6];
+  years.forEach(()=>colW.push(1));
+  colW.push(1.05, 1.45, 1.05);
+  let html = `<div class="tbl-wrap"><table class="bal-table">${fitColgroup(colW)}<thead><tr><th>Country</th>`;
   years.forEach(y=>{ html += `<th class="${y===latestYear?'latest':''}">${y}</th>`; });
   html += `<th class="yoy">YoY Δ</th><th class="yoy grp-l">${priorHeader()}</th><th class="yoy">Chg</th>`;
   html += `</tr></thead><tbody>`;
@@ -933,11 +942,11 @@ fetch('data/psd_data.json')
 </script>
 
 <style>
-.cftc-table{width:100%;table-layout:fixed;border-collapse:collapse;border:1px solid var(--border2);background:var(--bg)}
-.cftc-table th{background:var(--th-bg);padding:7px 4px;text-align:right;font-size:12.5px;font-weight:900;letter-spacing:.03em;color:var(--text);border-bottom:2px solid var(--border2);white-space:nowrap;overflow:hidden}
+.cftc-table{border:1px solid var(--border2);background:var(--bg)}
+.cftc-table th{background:var(--th-bg);padding:4px 2px;text-align:right;font-size:11px;font-weight:900;letter-spacing:.01em;color:var(--text);border-bottom:2px solid var(--border2);white-space:normal;overflow-wrap:anywhere}
 .cftc-table th:first-child{text-align:left}
 .cftc-row-section td{background:var(--section-bg);color:var(--amber) !important;font-size:13px !important;font-weight:900 !important;letter-spacing:.16em;text-transform:uppercase;padding:8px 10px 6px;border-top:2px solid var(--amber)}
-.cftc-table td{padding:4px 4px;text-align:right;font-size:13px;font-weight:600;border-bottom:1px solid var(--border);color:var(--text2);white-space:nowrap;background:var(--bg);overflow:hidden;text-overflow:ellipsis}
+.cftc-table td{padding:3px 2px;text-align:right;font-size:12px;font-weight:600;border-bottom:1px solid var(--border);color:var(--text2);white-space:normal;overflow-wrap:anywhere;background:var(--bg)}
 .cftc-table td:first-child{text-align:left;color:var(--text);font-weight:700}
 .cftc-note{margin-left:12px;font-size:11px !important;font-weight:600 !important;letter-spacing:.04em !important;text-transform:none !important;color:var(--text3) !important}
 .cftc-scale{transform-origin:0 0}
@@ -957,36 +966,36 @@ fetch('data/psd_data.json')
 .cftc-legend .lg-g{background:rgba(46,143,82,.35)}
 .cftc-legend .lg-r{background:rgba(192,57,43,.35)}
 .cftc-legend .lg-dash{width:18px;height:0;border-top:1.5px dashed var(--ref-color)}
-.rf{display:inline-block;min-width:66px;text-align:right}
-.rp{display:inline-block;min-width:44px;margin-left:6px;text-align:right;font-size:10px;font-weight:600;opacity:.85}
+.rf,.gf{display:block;min-width:0;text-align:right}
+.rp,.gc{display:block;min-width:0;margin:0;text-align:right;font-size:10px;font-weight:600}
 .cftc-table td.cftc-ref{color:var(--ref-color);font-style:italic;font-weight:600;background:var(--ref-bg)}
 .cftc-table th.cftc-ref-h{color:var(--ref-color) !important;font-style:italic;background:var(--ref-bg)}
 .cftc-ref-sub{display:block;font-size:10px;font-weight:600;letter-spacing:.04em;text-transform:none}
-.gf{display:inline-block;min-width:62px;text-align:right}
-.gc{display:inline-block;min-width:50px;margin-left:6px;text-align:right;font-size:10.5px;font-weight:700}
+.gc{font-weight:700}
+.rp{opacity:.85}
 .cftc-up{color:var(--green) !important}
 .cftc-dn{color:var(--red) !important}
 .cftc-extreme-hi{background:rgba(46,143,82,.22) !important;font-weight:800 !important}
 .cftc-extreme-lo{background:rgba(184,56,56,.22) !important;font-weight:800 !important}
 .cftc-extreme-yellow{background:rgba(230,180,20,.32) !important;font-weight:800 !important}
 #cftc-err{padding:40px;text-align:center;color:var(--red);font-size:14px}
-.cal-table{width:100%;min-width:1000px;table-layout:fixed;border-collapse:collapse;border:1px solid var(--border2);background:var(--bg)}
-.weather-table{width:100%;min-width:1000px;table-layout:fixed;border-collapse:collapse;border:1px solid var(--border2);background:var(--bg)}
-.weather-table th{background:var(--th-bg);padding:7px 6px;text-align:right;font-size:12px;font-weight:900;letter-spacing:.02em;color:var(--text);border-bottom:2px solid var(--border2);white-space:nowrap}
+.cal-table{border:1px solid var(--border2);background:var(--bg)}
+.weather-table{border:1px solid var(--border2);background:var(--bg)}
+.weather-table th{background:var(--th-bg);padding:4px 3px;text-align:right;font-size:11px;font-weight:900;letter-spacing:.02em;color:var(--text);border-bottom:2px solid var(--border2);white-space:normal;overflow-wrap:anywhere}
 .weather-table th:first-child{text-align:left}
-.weather-table td{padding:5px 6px;text-align:right;font-size:13px;font-weight:600;border-bottom:1px solid var(--border);color:var(--text2);white-space:nowrap;background:var(--bg)}
+.weather-table td{padding:3px 3px;text-align:right;font-size:12px;font-weight:600;border-bottom:1px solid var(--border);color:var(--text2);white-space:normal;overflow-wrap:anywhere;background:var(--bg)}
 .weather-table td:first-child{text-align:left;color:var(--text);font-weight:700}
-.summary-table{width:100%;min-width:1080px;table-layout:fixed;border-collapse:collapse;border:1px solid var(--border2);background:var(--bg)}
+.summary-table{border:1px solid var(--border2);background:var(--bg)}
 /* group divider: the first column of each group gets a heavier left line, running the full height of the table */
 .grp-l{border-left:2px solid var(--grp-line)}
-.summary-table th{background:var(--th-bg);padding:7px 6px;text-align:right;font-size:12.5px;font-weight:900;letter-spacing:.03em;color:var(--text);border-bottom:2px solid var(--border2);white-space:nowrap}
+.summary-table th{background:var(--th-bg);padding:4px 3px;text-align:right;font-size:11px;font-weight:900;letter-spacing:.02em;color:var(--text);border-bottom:2px solid var(--border2);white-space:normal;overflow-wrap:anywhere}
 .summary-table th:first-child{text-align:left}
-.summary-table td{padding:5px 6px;text-align:right;font-size:13px;font-weight:600;border-bottom:1px solid var(--border);color:var(--text2);white-space:nowrap;background:var(--bg)}
-.summary-table td:first-child{text-align:left;color:var(--text);font-weight:700;white-space:nowrap}
-.cal-table th{background:var(--th-bg);padding:7px 6px;text-align:center;font-size:12px;font-weight:900;letter-spacing:.03em;color:var(--text);border-bottom:2px solid var(--border2);white-space:nowrap}
+.summary-table td{padding:3px 3px;text-align:right;font-size:12px;font-weight:600;border-bottom:1px solid var(--border);color:var(--text2);white-space:normal;overflow-wrap:anywhere;background:var(--bg)}
+.summary-table td:first-child{text-align:left;color:var(--text);font-weight:700}
+.cal-table th{background:var(--th-bg);padding:4px 2px;text-align:center;font-size:11px;font-weight:900;letter-spacing:.02em;color:var(--text);border-bottom:2px solid var(--border2);white-space:normal}
 .cal-table th:first-child{text-align:left}
-.cal-table td{padding:5px 6px;text-align:center;font-size:12px;font-weight:600;border-bottom:1px solid var(--border);color:var(--text2);white-space:nowrap;background:var(--bg)}
-.cal-table td:first-child{text-align:left;color:var(--text);font-weight:700;white-space:nowrap}
+.cal-table td{padding:3px 2px;text-align:center;font-size:12px;font-weight:600;border-bottom:1px solid var(--border);color:var(--text2);background:var(--bg);white-space:normal}
+.cal-table td:first-child{text-align:left;color:var(--text);font-weight:700;overflow-wrap:anywhere}
 .cal-cur-month{box-shadow:inset 0 0 0 2px var(--amber) !important}
 th.cal-cur-month{color:var(--amber) !important}
 </style>
@@ -1245,10 +1254,10 @@ function buildCftcRow(entry, hist){
 // How spare width is shared out (each column is already sized to fit its content): Product, Net Pos, Wkly Chg, Net%OI,
 // Pctile, Gross Long, Gross Short, OI, OI Chg, then the 4 Historical Max columns - which get very little, so that
 // reference section stays compact instead of stretching.
-const CFTC_COL_WIDTHS = [12, 9, 8, 8, 7, 14, 14, 9, 8, 2.75, 2.75, 2.75, 2.75];
+const CFTC_COL_WIDTHS = [13, 7.2, 7.2, 6.4, 5.6, 8.2, 8.2, 8.2, 7.2, 7.2, 7.2, 7.2, 7.2];
 function buildCftcMasterTable(){
   const yrs = CFTC_DATA._meta?.years_history;
-  let html = `<div class="tbl-wrap"><div class="cftc-scale"><table class="cftc-table"><colgroup>${CFTC_COL_WIDTHS.map(w=>`<col style="width:${w}%">`).join('')}</colgroup><thead>`;
+  let html = `<div class="tbl-wrap"><table class="cftc-table"><colgroup>${CFTC_COL_WIDTHS.map(w=>`<col style="width:${w}%">`).join('')}</colgroup><thead>`;
   html += `<tr><th rowspan="2">Product</th>`;
   CFTC_COL_GROUPS.forEach(g=>{
     const label = g.ref ? `${g.label}<span class="cftc-ref-sub">${yrs ? yrs+'yr · ' : ''}contracts</span>` : g.label;
@@ -1489,59 +1498,7 @@ function wireCftcChartControls(box, idx, list){
   }));
 }
 
-// Sizes every CFTC column to the widest thing actually in it, measured in the browser with the real data and font, so
-// nothing is ever cut off (fixed guesses kept failing once real numbers - 7-digit Treasury positions, 6-digit OI
-// changes - arrived). Spare width is shared out in proportion to CFTC_COL_WIDTHS; if the content needs more room than the
-// window offers, the whole table is scaled down to fit - so it never clips and never scrolls sideways.
-function fitCftcTable(){
-  const table = document.querySelector('#cftc-root table.cftc-table');
-  if(!table || !table.offsetParent) return;          // page hidden: it is fitted when the tab is shown
-  const box = table.parentElement, wrap = box.parentElement;
-  const cols = [...table.querySelectorAll('colgroup col')], n = cols.length;
-  // start from a clean, unscaled state so the measurements below are true sizes
-  box.style.transform = ''; box.style.width = ''; wrap.style.height = ''; wrap.style.overflowX = '';
-  table.style.minWidth = ''; table.style.width = '';
-  cols.forEach((c, i)=>{ c.style.width = CFTC_COL_WIDTHS[i] + '%'; });
-  const need = new Array(n).fill(0), wide = [];
-  const headRows = table.tHead ? [...table.tHead.rows] : [];
-  [...table.rows].forEach(tr=>{
-    if(tr.classList.contains('cftc-row-section')) return;
-    let ci = (headRows.length > 1 && tr === headRows[1]) ? 1 : 0;       // 2nd header row starts after the Product column
-    [...tr.cells].forEach(cell=>{
-      const span = cell.colSpan || 1, cs = getComputedStyle(cell), rg = document.createRange();
-      rg.selectNodeContents(cell);
-      const w = Math.ceil(rg.getBoundingClientRect().width + parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight) + parseFloat(cs.borderLeftWidth || 0) + 4);
-      if(span === 1) need[ci] = Math.max(need[ci], w); else wide.push({ci, span, w});
-      ci += span;
-    });
-  });
-  // a heading that spans several columns (e.g. "Gross Positions") must fit across them
-  wide.forEach(({ci, span, w})=>{
-    const have = need.slice(ci, ci + span).reduce((a, b)=>a + b, 0);
-    if(w > have){ const add = (w - have) / span; for(let k = ci; k < ci + span; k++) need[k] += add; }
-  });
-  // Leave 3px of slack: the table's collapsed borders and sub-pixel rounding must never push it past its box (a 1px overshoot is
-  // enough for a browser to show a horizontal scrollbar), and the box itself is never allowed to scroll sideways at all.
-  const sumNeed = need.reduce((a, b)=>a + b, 0), avail = wrap.clientWidth - 3;
-  wrap.style.overflowX = 'hidden'; wrap.style.overflowX = 'clip';   // ('clip' is ignored by old browsers, which then keep 'hidden')
-  if(sumNeed > avail){
-    // lay the table out at the width it needs, then scale that down to the window. The scale comes from the widths
-    // actually set (each rounded up), so the scaled table can't overshoot the box by a pixel or two.
-    const px = need.map(Math.ceil), sum = px.reduce((a, b)=>a + b, 0);
-    cols.forEach((c, i)=>{ c.style.width = px[i] + 'px'; });
-    table.style.width = sum + 'px'; box.style.width = sum + 'px';
-    const w = Math.max(sum, table.offsetWidth), z = avail / w;      // table.offsetWidth includes the collapsed borders
-    box.style.width = w + 'px';
-    box.style.transform = `scale(${z})`;
-    wrap.style.height = (Math.ceil(box.offsetHeight * z) + 2) + 'px';   // a transform doesn't change layout height, so set it
-  } else {
-    const extra = avail - sumNeed;                               // plenty of room: share the spare width out
-    cols.forEach((c, i)=>{ c.style.width = (Math.floor((need[i] + extra * CFTC_COL_WIDTHS[i] / 100) * 10) / 10) + 'px'; });   // rounded down so the total can't exceed the box
-    table.style.width = avail + 'px';
-  }
-}
-let _cftcFitTimer = null;
-window.addEventListener('resize', ()=>{ clearTimeout(_cftcFitTimer); _cftcFitTimer = setTimeout(fitCftcTable, 150); });
+function fitCftcTable(){}
 
 function normaliseCftc(data){
   if(!data || !data.codes) return data;
@@ -2116,11 +2073,11 @@ renderWeatherPage();   // the crop calendar is static, so draw the page right aw
 </style>
 
 <style>
-.seas-table{border-collapse:collapse;background:var(--bg)}
-.seas-table th{padding:8px 16px;text-align:center;font-size:12px;font-weight:800;color:var(--text);background:var(--th-bg);border:1px solid var(--border2);white-space:nowrap}
-.seas-table td{padding:7px 16px;text-align:center;font-size:13px;font-weight:700;color:#111;border:1px solid var(--border);white-space:nowrap}
-.seas-table td.seas-label{text-align:left;font-weight:700;color:var(--text);background:var(--bg);position:sticky;left:0;z-index:1}
-.seas-table th.seas-label-h{text-align:left;position:sticky;left:0;z-index:2;background:var(--th-bg)}
+.seas-table{background:var(--bg)}
+.seas-table th{padding:4px 2px;text-align:center;font-size:11px;font-weight:800;color:var(--text);background:var(--th-bg);border:1px solid var(--border2);white-space:normal;overflow-wrap:anywhere}
+.seas-table td{padding:3px 2px;text-align:center;font-size:12px;font-weight:700;color:#111;border:1px solid var(--border);white-space:normal}
+.seas-table td.seas-label{text-align:left;font-weight:700;color:var(--text);background:var(--bg)}
+.seas-table th.seas-label-h{text-align:left;background:var(--th-bg)}
 .seas-section-row td{background:var(--section-bg) !important;color:var(--amber) !important;font-weight:900;text-transform:uppercase;font-size:12px;letter-spacing:.08em;text-align:left;position:sticky;left:0}
 </style>
 <script>
@@ -2234,13 +2191,8 @@ function seasonalsWindowState(startMonth){
 }
 function buildSeasonalsTable(startMonth){
   const cols = seasWindow(startMonth).cols;   // rolling quarter: selected month + next 2 (wraps at year end)
-  const year = seasWindowYear(startMonth);
-
-  let html = `<table class="seas-table"><thead><tr><th class="seas-label-h">Product</th>`;
-  cols.forEach(o=>{
-    const expired = seasWeekExpired(seasWeekBounds(o.w, year, startMonth));
-    html += `<th${expired?' class="seas-expired" title="Expired window — this week has ended"':''}>${o.w}${expired?'<div class="seas-exp-tag">expired</div>':''}</th>`;
-  });
+  let html = `<table class="seas-table">${fitColgroup([2.6, ...cols.map(()=>1)])}<thead><tr><th class="seas-label-h">Product</th>`;
+  cols.forEach(o=>{ html += `<th>${o.w}</th>`; });
   html += `</tr></thead><tbody>`;
 
   SEASONALS_SECTIONS.forEach(section=>{
@@ -2250,9 +2202,8 @@ function buildSeasonalsTable(startMonth){
       html += `<tr><td class="seas-label">${p}</td>`;
       cols.forEach(o=>{
         const v = vals[o.i];
-        const expired = seasWeekExpired(seasWeekBounds(o.w, year, startMonth));
         const text = (v===null||v===undefined) ? 'not available' : (v>0?'+':'')+v;
-        html += `<td${expired?' class="seas-expired" title="Expired window — this week has ended"':''} style="background:${seasonalColor(v)}">${text}${expired?'<div class="seas-exp-tag">expired</div>':''}</td>`;
+        html += `<td style="background:${seasonalColor(v)}">${text}</td>`;
       });
       html += `</tr>`;
     });
@@ -2265,9 +2216,8 @@ function renderSeasonals(){
   if(!seasonalsMonth) seasonalsMonth = defaultSeasonalsMonth();
   const months = getSeasonalsMonths();
   const root = document.getElementById('seasonals-root');
-  const st = seasonalsStatus();
   const win = seasonalsWindowState(seasonalsMonth);
-  let selHtml = `<div class="toggle" style="margin-bottom:16px;display:inline-flex">`;
+  let selHtml = `<div class="toggle" style="margin-bottom:12px;display:inline-flex;flex-wrap:wrap">`;
   months.forEach(m=>{
     selHtml += `<button class="tbtn seas-month-btn${m===seasonalsMonth?' active':''}" data-m="${m}">${m}</button>`;
   });
@@ -2278,14 +2228,9 @@ function renderSeasonals(){
   const spanTxt = (firstBounds && lastBounds)
     ? `${seasWindow(seasonalsMonth).window[0]} ${firstBounds.start.getFullYear()} through ${seasWindow(seasonalsMonth).window[2]} ${lastBounds.start.getFullYear()}`
     : `${seasWindow(seasonalsMonth).window[0]} through ${seasWindow(seasonalsMonth).window[2]}`;
-  selHtml += `</div><div style="font-size:12px;color:var(--text3);margin-bottom:10px">Showing ${spanTxt}</div>`;
-  let banner = '';
-  if(st.stale===true) banner += `<div class="fresh-warn">Review expired. Last reviewed ${fmtCaDate(parseAnyDate(SEASONALS_REVIEWED))}. The scores below are the last figures entered. Nothing has been filled in since.</div>`;
-  if(win.total && win.expired===win.total) banner += `<div class="fresh-warn">This window has expired. Every week shown has already ended.</div>`;
-  else if(win.expired) banner += `<div class="fresh-warn">${win.expired} week${win.expired===1?'':'s'} in this window ${win.expired===1?'has':'have'} expired.</div>`;
-  setMetaLines('seasonals-meta', null, 'Last reviewed ' + fmtCaDate(parseAnyDate(SEASONALS_REVIEWED)), st.stale);
-  const method = `<div class="panel"><div class="panel-hdr"><span class="panel-title">Seasonal scores</span><span class="panel-sub">manual</span></div>${freshStrip(st.parts, st.stale)}<div style="padding:10px 16px 14px;font-size:13px;color:var(--text2);line-height:1.5">${SEASONALS_METHOD}</div></div>`;
-  root.innerHTML = method + selHtml + banner + `<div class="panel"><div class="panel-hdr"><span class="panel-title">Weekly scores</span></div>${freshStrip(st.parts, st.stale)}<div class="tbl-wrap">${buildSeasonalsTable(seasonalsMonth)}</div></div>` + `<div class="page-footnote">Forward-looking weekly seasonal score (−5 to +5), 15-year lookback. Manually entered, not auto-updating. A week marked expired has already ended. Last reviewed ${fmtCaDate(parseAnyDate(SEASONALS_REVIEWED))}.</div>`;
+  selHtml += `</div><div style="font-size:12px;color:var(--text3);margin-bottom:4px">Showing ${spanTxt}</div>`;
+  root.innerHTML = `<div class="panel"><div class="panel-hdr"><span class="panel-title">Seasonal scores</span></div><div style="padding:12px 16px 8px">${selHtml}</div></div>`
+    + `<div class="panel"><div class="panel-hdr"><span class="panel-title">Weekly scores</span></div><div class="tbl-wrap">${buildSeasonalsTable(seasonalsMonth)}</div></div>`;
   root.querySelectorAll('.seas-month-btn').forEach(b=>{
     b.addEventListener('click', ()=>{ seasonalsMonth = b.dataset.m; renderSeasonals(); });
   });
@@ -2294,10 +2239,10 @@ renderSeasonals();
 </script>
 
 <style>
-.exp-table{width:100%;table-layout:fixed;border-collapse:collapse;border:1px solid var(--border2);background:var(--bg)}
-.exp-table th{background:var(--th-bg);padding:7px 4px;text-align:right;font-size:12.5px;font-weight:900;letter-spacing:.03em;color:var(--text);border-bottom:2px solid var(--border2);white-space:nowrap;overflow:hidden}
-.exp-table th:first-child{text-align:left;width:20%}
-.exp-table td{padding:4px 4px;text-align:right;font-size:13px;font-weight:600;border-bottom:1px solid var(--border);color:var(--text2);white-space:nowrap;background:var(--bg);overflow:hidden;text-overflow:ellipsis}
+.exp-table{border:1px solid var(--border2);background:var(--bg)}
+.exp-table th{background:var(--th-bg);padding:4px 3px;text-align:right;font-size:11px;font-weight:900;letter-spacing:.02em;color:var(--text);border-bottom:2px solid var(--border2);white-space:normal;overflow-wrap:anywhere}
+.exp-table th:first-child{text-align:left}
+.exp-table td{padding:3px 3px;text-align:right;font-size:12px;font-weight:600;border-bottom:1px solid var(--border);color:var(--text2);white-space:normal;overflow-wrap:anywhere;background:var(--bg)}
 .exp-table td:first-child{text-align:left;color:var(--text);font-weight:700}
 .exp-table td.prior{color:var(--text3)}
 .exp-table tr.exp-total td{background:var(--section-bg);color:var(--text);font-weight:900}
@@ -2334,7 +2279,7 @@ function buildExportsSummaryTable(){
     {label:'Accum. Exports YoY'},
     {label:'Total Commitment YoY'},
   ];
-  let html = `<table class="exp-table"><thead><tr><th>Commodity</th>`;
+  let html = `<table class="exp-table">${fitColgroup([2.2,1,1,1.15,1.15,1,1])}<thead><tr><th>Commodity</th>`;
   cols.forEach(c=>{ html += `<th>${c.label}</th>`; });
   html += `</tr></thead><tbody>`;
 
@@ -2379,7 +2324,7 @@ function buildExportsWowTable(commName){
   if(n < 4) cap += ' — more weeks appear as each weekly report is collected';
 
   const cols = ['Net Sales (Wk)','Outstanding Sales','Accum. Exports (YTD)','Total Commitment','Accum. Exports YoY','Total Commitment YoY'];
-  let html = `<div class="exp-cap">${cap}</div><table class="exp-table"><thead><tr><th>Week Ending</th>`;
+  let html = `<div class="exp-cap">${cap}</div><table class="exp-table">${fitColgroup([1.3,1,1,1.15,1.15,1,1])}<thead><tr><th>Week Ending</th>`;
   cols.forEach(c=>{ html += `<th>${c}</th>`; });
   html += `</tr></thead><tbody>`;
 
@@ -2412,7 +2357,7 @@ function buildExportsCountryTable(commName){
     {label:'Accum. Exports YoY'},
     {label:'Total Commitment YoY'},
   ];
-  let html = `<table class="exp-table"><thead><tr><th>Country</th>`;
+  let html = `<table class="exp-table">${fitColgroup([1.8,1,1,1.15,1.15,1,1])}<thead><tr><th>Country</th>`;
   cols.forEach(c=>{ html += `<th>${c.label}</th>`; });
   html += `</tr></thead><tbody>`;
 
@@ -2506,12 +2451,12 @@ fetch('data/export_sales.json')
 </script>
 
 <style>
-.oil-table{width:100%;border-collapse:collapse;border:1px solid var(--border2);background:var(--bg)}
-.oil-table th{background:var(--th-bg);padding:8px 8px;text-align:right;font-size:14px;font-weight:800;letter-spacing:.05em;color:var(--text2);border-bottom:2px solid var(--border2);white-space:nowrap}
-.oil-table th:first-child{text-align:left;font-size:14px;letter-spacing:.08em}
+.oil-table{border:1px solid var(--border2);background:var(--bg)}
+.oil-table th{background:var(--th-bg);padding:4px 3px;text-align:right;font-size:11px;font-weight:800;letter-spacing:.02em;color:var(--text2);border-bottom:2px solid var(--border2);white-space:normal;overflow-wrap:anywhere}
+.oil-table th:first-child{text-align:left;letter-spacing:.04em}
 .oil-table th.latest{color:var(--amber);font-weight:900;border-bottom:2px solid var(--amber)}
 .oil-table th.yoy{color:var(--text3);font-style:italic}
-.oil-table td{padding:5px 8px;text-align:right;font-size:15px;font-weight:600;border-bottom:1px solid var(--border);color:var(--text2);white-space:nowrap;background:var(--bg)}
+.oil-table td{padding:3px 3px;text-align:right;font-size:12px;font-weight:600;border-bottom:1px solid var(--border);color:var(--text2);white-space:normal;overflow-wrap:anywhere;background:var(--bg)}
 .oil-table td:first-child{text-align:left;color:var(--text);font-weight:700}
 #vegoils-err{padding:40px;text-align:center;color:var(--red);font-size:14px}
 </style>
@@ -2618,10 +2563,10 @@ function buildOilBalanceTable(yearDataFn, years, includeYoy, allYearsFull, world
     return `<td class="grp-l prior">${pText}</td><td class="${chgClass(chg, d)}">${cText}</td>`;
   }
 
-  let html = `<div class="tbl-wrap"><table class="oil-table"><colgroup><col style="width:190px">`;
-  years.forEach(()=>{ html += '<col>'; });
-  if(includeYoy) html += '<col style="width:75px"><col style="width:100px"><col style="width:80px">';
-  html += `</colgroup><thead><tr><th>ITEM</th>`;
+  const colW = [3.4];
+  years.forEach(()=>colW.push(1));
+  if(includeYoy) colW.push(1.05, 1.45, 1.05);
+  let html = `<div class="tbl-wrap"><table class="oil-table">${fitColgroup(colW)}<thead><tr><th>ITEM</th>`;
   years.forEach(y=>{ html += `<th class="${y===latestYear?'latest':''}">${y}</th>`; });
   if(includeYoy) html += `<th class="yoy">YoY Δ</th><th class="yoy grp-l">${priorHeader()}</th><th class="yoy">Chg</th>`;
   html += `</tr></thead><tbody>`;
