@@ -39,16 +39,17 @@ body.light{
 .sec-hdr{font-size:15px;font-weight:900;letter-spacing:.16em;text-transform:uppercase;color:var(--amber);padding:16px 0 9px;border-bottom:2px solid var(--amber);margin:32px 0 14px}
 .sec-hdr:first-child{margin-top:0}
 .panel{border-bottom:2px solid var(--amber);margin-bottom:20px;overflow:hidden}
-.panel-hdr{padding:9px 16px;background:var(--bg1);border:1px solid var(--border);border-bottom:none;border-top:3px solid var(--amber)}
-.panel-title{font-size:16px;font-weight:900;letter-spacing:.09em;text-transform:uppercase;color:var(--amber)}
-.panel-sub{font-size:13px;color:var(--text3);letter-spacing:.05em;margin-left:8px}
-.panel-fresh{display:flex;flex-wrap:wrap;gap:6px 16px;align-items:center;padding:6px 16px;background:var(--bg1);border:1px solid var(--border);border-bottom:none;font-size:12px;color:var(--text3);line-height:1.45}
-.badge{font-weight:900;letter-spacing:.08em;text-transform:uppercase;padding:2px 8px;border-radius:2px;font-size:11px}
-.badge-current{background:rgba(46,143,82,.2);color:var(--green)}
-.badge-stale{background:rgba(196,48,43,.18);color:var(--red)}
-.badge-unknown{background:var(--section-bg);color:var(--text2)}
-.fresh-warn{margin:0 0 12px;padding:8px 12px;border:1px solid var(--red);color:var(--red);font-size:13px;font-weight:700}
-.wx-point{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);font-weight:800;margin-left:6px}
+.panel-hdr{display:flex;align-items:baseline;flex-wrap:wrap;gap:6px 10px;padding:8px 14px;background:var(--bg1);border:1px solid var(--border);border-bottom:none;border-top:3px solid var(--amber)}
+.panel-title{font-size:15px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:var(--amber)}
+.panel-sub{font-size:12px;color:var(--text3);letter-spacing:.03em}
+.prov{margin-left:auto;display:inline-flex;align-items:center;gap:6px}
+.prov-i{width:16px;height:16px;border-radius:50%;border:1px solid var(--border2);background:transparent;color:var(--text3);font:700 10px/14px 'Courier New',Courier,monospace;cursor:help;padding:0}
+.prov-i:hover,.prov-i:focus{color:var(--amber);border-color:var(--amber);outline:none}
+.prov-stale{font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--red)}
+.legend-line{font-size:11px;color:var(--text3);margin:8px 2px 0}
+.pt{color:var(--text3);font-weight:800;margin-left:2px}
+#cftc-chart{max-width:100%}
+#cftc-chart svg{width:100%;height:auto;display:block;max-width:100%}
 .seas-expired{outline:2px dashed var(--red);outline-offset:-2px}
 .seas-exp-tag{display:block;margin-top:2px;font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:var(--red);font-weight:900}
 .tbl-wrap{max-width:100%}
@@ -315,7 +316,7 @@ function getStu(yearData, world){
   }
   return denom>0 ? (end/denom)*100 : null;
 }
-const STU_NOTE = `<div class="page-footnote">World stocks-to-use is ending stocks divided by domestic use. Country rows, and exporter or importer groups, use ending stocks divided by domestic use plus exports. If an input is missing the ratio shows as not available.</div>`;
+const STU_DEF = 'World stocks-to-use is ending stocks / domestic use. Country and group rows are ending stocks / (domestic use + exports). A missing input shows as not available.';
 // Commodities with no bushel weight — no MT/BU toggle makes sense for these; Cotton also
 // stays in its native bales unit, while Cocoa/Coffee/Sugar stay in MT (just no bushel toggle).
 const NO_BUSHEL_COMMS = new Set(['Cotton', 'Cocoa', 'Coffee', 'Sugar']);
@@ -506,7 +507,7 @@ function buildBalanceTable(comm, yearDataFn, years, includeYoy, allYearsFull, wo
 }
 
 function panelWrap(title, sub, innerHtml){
-  return `<div class="panel"><div class="panel-hdr"><span class="panel-title">${title}</span><span class="panel-sub">${sub}</span></div>${usdaFreshStrip()}${innerHtml}</div>`;
+  return `<div class="panel"><div class="panel-hdr"><span class="panel-title">${title}</span>${sub?`<span class="panel-sub">${sub}</span>`:''}${usdaProv()}</div>${innerHtml}</div>`;
 }
 
 // Looks up CROP_CALENDAR (defined later in the file, safe since this only runs after full page load)
@@ -658,7 +659,6 @@ function render(){
         buildBalanceTable(comm, y=>(countries[c]||{})[y], years10, true, yearsAll, false)));
     });
     root.appendChild(stackOats);
-    root.insertAdjacentHTML('beforeend', STU_NOTE);
     return;
   }
 
@@ -700,7 +700,6 @@ function render(){
     buildMetricByCountryTable(impList, countries, years10, 'im')));
   root.insertAdjacentHTML('beforeend', panelWrap('ENDING STOCKS', 'Importers — ' + unitLabel(),
     buildMetricByCountryTable(impList, countries, years10, 'es')));
-  root.insertAdjacentHTML('beforeend', STU_NOTE);
 }
 
 function initToggles(){
@@ -790,13 +789,11 @@ function fmtStamp(s){
   const mm = String(d.getUTCMinutes()).padStart(2,'0');
   return fmtCaDate(d)+', '+hh+':'+mm+' UTC';
 }
-function freshnessBadge(stale){
-  if(stale===true) return '<span class="badge badge-stale">Stale</span>';
-  if(stale===false) return '<span class="badge badge-current">Current</span>';
-  return '<span class="badge badge-unknown">Not checked</span>';
-}
-function freshStrip(parts, stale){
-  return `<div class="panel-fresh">${parts.map(p=>`<span>${p}</span>`).join('')}${freshnessBadge(stale)}</div>`;
+function escAttr(t){ return String(t).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
+function provMark(lines, stale){
+  const tip = lines.map(escAttr).join('&#10;');
+  const flag = stale===true ? '<span class="prov-stale">Stale</span>' : '';
+  return `<span class="prov">${flag}<button type="button" class="prov-i" aria-label="Source details" title="${tip}">i</button></span>`;
 }
 function usdaStatus(comm){
   const fetched = DATA && DATA._meta && DATA._meta.fetched_at;
@@ -815,10 +812,10 @@ function usdaStatus(comm){
   ];
   return {parts, stale};
 }
-function usdaFreshStrip(){
-  if(!DATA || !DATA._meta) return freshStrip(['Source release: not available','Last fetch: not available'], null);
+function usdaProv(){
+  if(!DATA || !DATA._meta) return provMark(['Source: USDA PSD','Release: not available','Last fetch: not available', STU_DEF], null);
   const s = usdaStatus(typeof currentComm==='undefined' ? 'Wheat' : currentComm);
-  return freshStrip(s.parts, s.stale);
+  return provMark(['Source: USDA PSD', ...s.parts, STU_DEF], s.stale);
 }
 function cftcStatus(){
   const asOf = (typeof CFTC_DATA!=='undefined' && CFTC_DATA) ? latestCftcDate() : null;
@@ -855,8 +852,7 @@ function weatherStatus(){
   const fetchDate = parseStamp(fetched);
   let stale = null;
   if(fetchDate) stale = (Date.now()-fetchDate.getTime())/36e5 > STALE_WEATHER_HOURS;
-  else if(typeof weatherState!=='undefined' && weatherState==='failed') stale = true;
-  return {parts:['Source release: not available','Last fetch: '+fmtStamp(fetched)], stale};
+  return {parts:['Source: Open-Meteo','Release: not available','Last fetch: '+fmtStamp(fetched)], stale};
 }
 function seasonalsStatus(){
   const raw = (typeof SEASONALS_REVIEWED==='string') ? SEASONALS_REVIEWED : null;
@@ -889,7 +885,7 @@ function summarySourceStale(){
   if(flags.every(s=>s===false)) return false;
   return null;
 }
-function summarySourceStrips(){
+function summaryProv(){
   const fetched = DATA && DATA._meta && DATA._meta.fetched_at;
   const release = parseAnyDate(DATA && DATA._meta && DATA._meta.wasde_release);
   const fetchDate = parseStamp(fetched);
@@ -898,24 +894,21 @@ function summarySourceStrips(){
     const days = (Date.now()-fetchDate.getTime())/86400000;
     usdaStale = days > STALE_WASDE_FETCH_DAYS || (release ? ageDays(release) > STALE_WASDE_RELEASE_DAYS : false);
   }
-  const cftc = cftcStatus(), exp = exportsStatus(), seas = seasonalsStatus();
-  return `<div class="panel"><div class="panel-hdr"><span class="panel-title">Sources</span><span class="panel-sub">release date, last successful fetch, stale status</span></div>`
-    + freshStrip(['WASDE release: '+(release?fmtCaDate(release):'not available'), 'Coffee and sugar release: not available', 'Last fetch: '+fmtStamp(fetched)], usdaStale)
-    + freshStrip(cftc.parts, cftc.stale)
-    + freshStrip(exp.parts, exp.stale)
-    + freshStrip(seas.parts, seas.stale)
-    + `</div>`;
+  const cftc = cftcStatus(), exp = exportsStatus();
+  const stale = [usdaStale, cftc.stale, exp.stale].some(s=>s===true);
+  return provMark([
+    'USDA PSD. WASDE release: '+(release?fmtCaDate(release):'not available')+'. Coffee and sugar release: not available. Last fetch: '+fmtStamp(fetched)+'.',
+    'CFTC. '+cftc.parts.join('. ')+'.',
+    'Export sales. '+exp.parts.join('. ')+'.',
+    'Seasonals: fixed scores typed into the page. No external feed.',
+    STU_DEF,
+    'Domestic production is the United States, except canola (Canada) and coffee and sugar (Brazil). Soyoil and soymeal seasonality, positioning and export sales use soybean oil and soybean meal. Their production and stocks-to-use combine the oils or the meals. Cocoa is positioning and seasonality only.'
+  ], stale);
 }
 // Header block: last successful fetch, the source date, and whether that source is stale.
-function setMetaLines(id, runStamp, asOfText, stale){
+function setMetaLines(id){
   const el = document.getElementById(id);
-  if(!el) return;
-  const esc = t => String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-  el.style.textAlign = 'right';
-  el.style.lineHeight = '1.5';
-  el.innerHTML = 'Last fetch: ' + esc(runStamp ? fmtStamp(runStamp) : 'not available') +
-    (asOfText ? '<br><span style="color:var(--text2)">' + esc(asOfText) + '</span>' : '') +
-    '<br>' + freshnessBadge(stale===undefined ? null : stale);
+  if(el) el.textContent = '';
 }
 function updateUsdaMeta(){
   const s = usdaStatus(currentComm);
@@ -1365,14 +1358,13 @@ function renderCftcChart(){
   lines.forEach(l=>{ lo = Math.min(lo, l.v); hi = Math.max(hi, l.v); });
   const pad = (hi - lo) * 0.05 || 1; lo -= pad; hi += pad;
 
-  const W = 1300, H = 430, M = {l:72, r:176, t:14, b:34};
+  const W = 1300, H = 420, M = {l:64, r:16, t:12, b:32};
   const plotW = W - M.l - M.r, plotH = H - M.t - M.b, n = pts.length, step = plotW / n;
   const bw = Math.max(1, Math.min(step * 0.72, 14));
   const y = v => M.t + (hi - v) / (hi - lo) * plotH;
   const cx = i => M.l + (i + 0.5) * step;
-  const fmtV = v => pct ? cftcPct(v) : cftcFmt(v);
 
-  let svg = `<svg viewBox="0 0 ${W} ${H}" width="100%" style="display:block;max-width:100%;font-family:inherit" role="img">`;
+  let svg = `<svg viewBox="0 0 ${W} ${H}" width="100%" preserveAspectRatio="xMidYMid meet" role="img">`;
   cftcNiceTicks(lo, hi, 7).forEach(t=>{
     svg += `<line x1="${M.l}" x2="${M.l + plotW}" y1="${y(t)}" y2="${y(t)}" style="stroke:var(--border);stroke-width:1"/>`;
     svg += `<text x="${M.l - 8}" y="${y(t) + 4}" text-anchor="end" style="fill:var(--text3);font-size:11px">${cftcAxisFmt(t, pct)}</text>`;
@@ -1385,13 +1377,9 @@ function renderCftcChart(){
   });
   svg += `<line x1="${M.l}" x2="${M.l + plotW}" y1="${y(0)}" y2="${y(0)}" style="stroke:var(--text3);stroke-width:1"/>`;
   // historical maxima: faint dashed lines, labelled at the right (labels nudged apart if two sit close together)
-  const lab = lines.map(l=>({...l, ly: y(l.v)})).sort((a, b)=>a.ly - b.ly);
-  for(let i = 1; i < lab.length; i++){ if(lab[i].ly - lab[i-1].ly < 13) lab[i].ly = lab[i-1].ly + 13; }
+  const fmtV = v => pct ? cftcPct(v) : cftcFmt(v);
   lines.forEach(l=>{
-    svg += `<line x1="${M.l}" x2="${M.l + plotW}" y1="${y(l.v)}" y2="${y(l.v)}" style="stroke:var(--ref-color);stroke-opacity:.6;stroke-width:1.2;stroke-dasharray:5 5"/>`;
-  });
-  lab.forEach(l=>{
-    svg += `<text x="${M.l + plotW + 8}" y="${l.ly + 4}" style="fill:var(--ref-color);font-size:10.5px;font-style:italic"><title>${l.name} — set ${l.date}</title>${l.name} ${fmtV(l.v)}</text>`;
+    svg += `<line x1="${M.l}" x2="${M.l + plotW}" y1="${y(l.v)}" y2="${y(l.v)}" style="stroke:var(--ref-color);stroke-opacity:.7;stroke-width:1.2;stroke-dasharray:5 5"><title>${l.name} ${fmtV(l.v)} set ${l.date}</title></line>`;
   });
   // net position line
   svg += `<polyline fill="none" points="${pts.map((p, i)=>cx(i).toFixed(1) + ',' + y(p[kN]).toFixed(1)).join(' ')}" style="stroke:var(--amber);stroke-width:2;stroke-linejoin:round"/>`;
@@ -1402,8 +1390,10 @@ function renderCftcChart(){
     const d = new Date(p.date + 'T00:00:00Z'), mi = d.getUTCFullYear() * 12 + d.getUTCMonth();
     if(mi % every === 0 && mi !== lastMi){
       lastMi = mi;
+      const anchor = cx(i) < M.l + 40 ? 'start' : (cx(i) > M.l + plotW - 40 ? 'end' : 'middle');
+      const lx = anchor==='start' ? M.l : (anchor==='end' ? M.l + plotW : cx(i));
       svg += `<line x1="${cx(i)}" x2="${cx(i)}" y1="${M.t + plotH}" y2="${M.t + plotH + 5}" style="stroke:var(--text3)"/>`;
-      svg += `<text x="${cx(i)}" y="${H - 12}" text-anchor="middle" style="fill:var(--text3);font-size:11px">${d.toLocaleDateString('en-US', {month:'short', year:'2-digit', timeZone:'UTC'})}</text>`;
+      svg += `<text x="${lx}" y="${H - 8}" text-anchor="${anchor}" style="fill:var(--text3);font-size:11px">${d.toLocaleDateString('en-US', {month:'short', year:'2-digit', timeZone:'UTC'})}</text>`;
     }
   });
   svg += `<g class="cftc-hover" pointer-events="none"></g><rect class="cftc-hit" x="${M.l}" y="${M.t}" width="${plotW}" height="${plotH}" fill="transparent"/></svg>`;
@@ -1422,7 +1412,10 @@ function renderCftcChart(){
       `Gross long   ${cftcFmt(p.long)}  (${cftcPct(p.longPct)})`,
       `Gross short  ${cftcFmt(p.short)}  (${cftcPct(p.shortPct)})`,
     ];
-    const tw = 268, th = rows.length * 16 + 12, tx = X > M.l + plotW / 2 ? X - tw - 12 : X + 12, ty = M.t + 8;
+    const tw = 268, th = rows.length * 16 + 12;
+    let tx = X > M.l + plotW / 2 ? X - tw - 12 : X + 12;
+    tx = Math.max(4, Math.min(W - tw - 4, tx));
+    const ty = M.t + 8;
     g.innerHTML = `<line x1="${X}" x2="${X}" y1="${M.t}" y2="${M.t + plotH}" style="stroke:var(--text3);stroke-width:1;stroke-dasharray:3 3"/>`
       + `<circle cx="${X}" cy="${y(p[kN])}" r="4" style="fill:var(--amber)"/>`
       + `<rect x="${tx}" y="${ty}" width="${tw}" height="${th}" rx="3" style="fill:var(--bg);stroke:var(--border2)"/>`
@@ -1442,11 +1435,11 @@ function renderCftcChangeChart(box, headerHtml, full, cutIso, idx, list){
   }
   let mx = 0; pts.forEach(p=>{ mx = Math.max(mx, Math.abs(p.chg)); });
   mx = (mx || 1) * 1.1;
-  const W = 1300, H = 430, M = {l:72, r:30, t:14, b:34};
+  const W = 1300, H = 420, M = {l:64, r:16, t:12, b:32};
   const plotW = W - M.l - M.r, plotH = H - M.t - M.b, n = pts.length, step = plotW / n, bw = Math.max(1, Math.min(step * 0.72, 16));
   const y = v => M.t + (mx - v) / (2 * mx) * plotH, cx = i => M.l + (i + 0.5) * step;
   const signed = v => v === null ? '—' : (v > 0 ? '+' : '') + cftcFmt(v);
-  let svg = `<svg viewBox="0 0 ${W} ${H}" width="100%" style="display:block;max-width:100%;font-family:inherit" role="img">`;
+  let svg = `<svg viewBox="0 0 ${W} ${H}" width="100%" preserveAspectRatio="xMidYMid meet" role="img">`;
   cftcNiceTicks(-mx, mx, 8).forEach(t=>{
     svg += `<line x1="${M.l}" x2="${M.l + plotW}" y1="${y(t)}" y2="${y(t)}" style="stroke:var(--border);stroke-width:1"/>`;
     svg += `<text x="${M.l - 8}" y="${y(t) + 4}" text-anchor="end" style="fill:var(--text3);font-size:11px">${t > 0 ? '+' : ''}${cftcAxisFmt(t, false)}</text>`;
@@ -1462,8 +1455,10 @@ function renderCftcChangeChart(box, headerHtml, full, cutIso, idx, list){
     const d = new Date(p.date + 'T00:00:00Z'), mi = d.getUTCFullYear() * 12 + d.getUTCMonth();
     if(mi % every === 0 && mi !== lastMi){
       lastMi = mi;
+      const anchor = cx(i) < M.l + 40 ? 'start' : (cx(i) > M.l + plotW - 40 ? 'end' : 'middle');
+      const lx = anchor==='start' ? M.l : (anchor==='end' ? M.l + plotW : cx(i));
       svg += `<line x1="${cx(i)}" x2="${cx(i)}" y1="${M.t + plotH}" y2="${M.t + plotH + 5}" style="stroke:var(--text3)"/>`;
-      svg += `<text x="${cx(i)}" y="${H - 12}" text-anchor="middle" style="fill:var(--text3);font-size:11px">${d.toLocaleDateString('en-US', {month:'short', year:'2-digit', timeZone:'UTC'})}</text>`;
+      svg += `<text x="${lx}" y="${H - 8}" text-anchor="${anchor}" style="fill:var(--text3);font-size:11px">${d.toLocaleDateString('en-US', {month:'short', year:'2-digit', timeZone:'UTC'})}</text>`;
     }
   });
   svg += `<g class="cftc-hover" pointer-events="none"></g><rect class="cftc-hit" x="${M.l}" y="${M.t}" width="${plotW}" height="${plotH}" fill="transparent"/></svg>`;
@@ -1480,7 +1475,10 @@ function renderCftcChangeChart(box, headerHtml, full, cutIso, idx, list){
       `Net position ${cftcFmt(p.net)}`,
       `Longs ${signed(p.dLong)}   Shorts ${signed(p.dShort)}`,
     ];
-    const tw = 286, th = rows.length * 16 + 12, tx = X > M.l + plotW / 2 ? X - tw - 12 : X + 12, ty = M.t + 8;
+    const tw = 286, th = rows.length * 16 + 12;
+    let tx = X > M.l + plotW / 2 ? X - tw - 12 : X + 12;
+    tx = Math.max(4, Math.min(W - tw - 4, tx));
+    const ty = M.t + 8;
     g.innerHTML = `<line x1="${X}" x2="${X}" y1="${M.t}" y2="${M.t + plotH}" style="stroke:var(--text3);stroke-width:1;stroke-dasharray:3 3"/>`
       + `<rect x="${tx}" y="${ty}" width="${tw}" height="${th}" rx="3" style="fill:var(--bg);stroke:var(--border2)"/>`
       + rows.map((t, k)=>`<text x="${tx + 10}" y="${ty + 20 + k * 16}" xml:space="preserve" style="fill:${k === 0 ? 'var(--amber)' : 'var(--text)'};font-size:11.5px;font-weight:${k === 0 ? 800 : 600}">${t.replace(/ /g, '\u00a0')}</text>`).join('');
@@ -1521,12 +1519,18 @@ function renderCftc(){
   setMetaLines('cftc-meta', CFTC_DATA._meta?.fetched_at, st.parts.slice(0,2).join(' · '), st.stale);
   const list = cftcProductList();
   if(!list.some(e=>e.code === cftcSelected)) cftcSelected = list.length ? list[0].code : null;   // first product with data
-  root.insertAdjacentHTML('beforeend', `<div class="panel"><div class="panel-hdr"><span class="panel-title">Positions</span><span class="panel-sub">Managed Money, except where noted</span></div>${freshStrip(st.parts, st.stale)}${buildCftcMasterTable()}</div>`);
+  const cftcNote = [
+    ...st.parts,
+    'Managed Money, except currencies, equities and Treasuries, which use Leveraged Funds.',
+    (yrs ? yrs+' year lookback. ' : '')+'Highlighted cells are the top or bottom 10 percent of that window.',
+    'The figure under gross long and gross short is the change since last week.',
+    'Historical max is the largest net long, net short, gross long and gross short in the window. Click a row to chart it.'
+  ];
+  root.insertAdjacentHTML('beforeend', `<div class="panel"><div class="panel-hdr"><span class="panel-title">Positions</span>${provMark(cftcNote, st.stale)}</div>${buildCftcMasterTable()}</div>`);
   root.insertAdjacentHTML('beforeend', `<div id="cftc-chart"></div>`);
   root.querySelectorAll('tr.cftc-click').forEach(tr=>tr.addEventListener('click', ()=>cftcSelect(tr.dataset.code, true)));
   fitCftcTable();
   renderCftcChart();
-  root.insertAdjacentHTML('beforeend', `<div class="page-footnote">Click any row to chart it below. Managed Money (Fund) category; currencies, equities and Treasuries show Leveraged Funds (the closest equivalent in CFTC's financial-futures report) — ${yrs ? yrs+'yr lookback' : ''} — highlighted cells are top/bottom 10% of that lookback window. Small figure beside Gross Long/Short = change since last week (green = added, red = cut). Historical Max (blue-grey) = largest net long, net short, gross long and gross short over the window, in contracts (net maxes also show the largest % of OI in small type). Hover Gross Positions for % of open interest, and Historical Max for dates.</div>`);
 }
 
 function loadCftc(){
@@ -1784,9 +1788,7 @@ function buildSummaryTable(){
         html += `<td class="${first}" style="color:var(--text3)">not available</td>`;
       } else {
         const text = (seas.value>0?'+':'')+seas.value;
-        const reviewed = (typeof SEASONALS_REVIEWED==='string') ? fmtCaDate(parseAnyDate(SEASONALS_REVIEWED)) : 'not available';
-        const reviewNote = seasonalsStatus().stale ? ' Review expired.' : '';
-        html += `<td class="${first}" style="background:${seasonalColor(seas.value)};color:#111;font-weight:800" title="Week of ${seas.label}. Manual score, last reviewed ${reviewed}.${reviewNote}">${text}</td>`;
+        html += `<td class="${first}" style="background:${seasonalColor(seas.value)};color:#111;font-weight:800" title="Week of ${seas.label}">${text}</td>`;
       }
     });
     if(!m){
@@ -1962,7 +1964,7 @@ function buildWeatherTable(){
     const coords = (d.latitude===undefined || d.latitude===null || d.longitude===undefined || d.longitude===null)
       ? '' : `${Number(d.latitude).toFixed(1)}, ${Number(d.longitude).toFixed(1)}`;
     const tip = 'Point reading' + (coords ? ' at ' + coords : '') + '. Not a provincial, state, or regional average.';
-    html += `<tr><td title="${escHtml(tip)}">${escHtml(name)} <span class="wx-point">point</span></td>`;
+    html += `<tr><td title="${escHtml(tip)}">${escHtml(name)}<sup class="pt">*</sup></td>`;
     html += `<td class="grp-l ${weatherDirClass(d.precip_90d_pct_normal, true, PRECIP_BAND)}">${fmtPctNormalWithMm(d.precip_90d_pct_normal, d.precip_90d_mm)}</td>`;
     html += `<td class="${weatherDirClass(d.precip_30d_pct_normal, true, PRECIP_BAND)}">${fmtPctNormalWithMm(d.precip_30d_pct_normal, d.precip_30d_mm)}</td>`;
     html += `<td class="${weatherDirClass(d.temp_dep_7d_c, false)}">${fmtTempDep(d.temp_dep_7d_c)}</td>`;
@@ -2018,50 +2020,36 @@ function buildCropCalendarTable(){
 function renderSummary(){
   const root = document.getElementById('summary-root');
   root.innerHTML = '';
-  // Not every run refreshes every source (a failed fetcher keeps its previous data) - so show the NEWEST run time
-  // here. How fresh each source's data really is is what the "Data as of" line below is for.
-  const stamps = [DATA, CFTC_DATA, EXPORTS_DATA]
-    .map(d => d && d._meta && d._meta.fetched_at)
-    .filter(Boolean)
-    .sort()
-    .reverse();
-  const asOf = [];
-  { const d = latestCftcDate(); if(d) asOf.push('CFTC ' + fmtAsOfDate(d, true)); }
-  { const d = parseAnyDate(DATA && DATA._meta && DATA._meta.wasde_release); if(d) asOf.push('USDA ' + fmtAsOfDate(d, false) + ' WASDE'); }
-  { const d = latestExportsDate(); if(d) asOf.push('Exports wk ending ' + fmtAsOfDate(d, true)); }
-  const flags = [summarySourceStale()];
-  setMetaLines('summary-meta', stamps.length ? stamps[0] : null, asOf.length ? 'Data as of: ' + asOf.join(' · ') : '', flags[0]);
-  root.insertAdjacentHTML('beforeend', summarySourceStrips());
-  root.insertAdjacentHTML('beforeend', `<div class="panel"><div class="panel-hdr"><span class="panel-title">Cross-market</span></div>${buildSummaryTable()}</div>`);
-
-  root.insertAdjacentHTML('beforeend', `<div class="page-footnote"><ul>
-    <li>Domestic = United States, except Canola (Canada) and Coffee/Sugar (Brazil), the actual major producers. Those rows have no Export Sales YoY.</li>
-    <li>Soyoil (Vegoils) and Soymeal (Meal): Seasonality, Positioning and Export Sales use Soybean Oil / Soybean Meal. Production YoY and Stocks/Use Rank combine all oils / all meals.</li>
-    <li>Cocoa: Positioning and Seasonality only. USDA doesn't track cocoa.</li>
-    <li>Seasonality: this week and next. Positioning Change = the week's move in net position (contracts); same direction as the net position = adding, opposite = unwinding.</li>
-    <li>Coffee and sugar use USDA's semi-annual reports. That release date is not in the file, so it shows as not available.</li>
-    <li>World stocks-to-use is ending stocks divided by domestic use. The domestic column is ending stocks divided by domestic use plus exports.</li>
-  </ul></div>`);
+  setMetaLines('summary-meta');
+  root.insertAdjacentHTML('beforeend', `<div class="panel"><div class="panel-hdr"><span class="panel-title">Cross-market</span>${summaryProv()}</div>${buildSummaryTable()}</div>`);
 }
 
 // The Weather page: the weather table + the crop calendar (static reference). Independent of the Summary page.
+function weatherProv(){
+  const st = weatherStatus();
+  const meta = (WEATHER_DATA && WEATHER_DATA._meta) || {};
+  const lines = [
+    ...st.parts,
+    'Each * is a point reading at that station grid point, not a provincial or state average.',
+    'Recent conditions and the 14-day forecast: Open-Meteo blend (NOAA GFS/HRRR, ECMWF IFS, DWD ICON, GEM). Normals: 10 years of ERA5.',
+    'Outlook: ECMWF SEAS5 ensemble lean, not a forecast.' + (meta.outlook_label ? ' Window: '+meta.outlook_label+'.' : '')
+  ];
+  if(meta.outlook_error) lines.push('Outlook incomplete: '+meta.outlook_error);
+  return provMark(lines, weatherState==='ready' && st.stale===true);
+}
 function renderWeatherPage(){
   const root = document.getElementById('weather-root');
   if(!root) return;
   root.innerHTML = '';
-  const stamp = WEATHER_DATA && WEATHER_DATA._meta && WEATHER_DATA._meta.fetched_at;
-  const wst = weatherStatus();
-  setMetaLines('weather-meta', weatherState === 'loading' ? null : stamp, 'Point readings at named stations', weatherState==='idle' ? null : wst.stale);
-  root.insertAdjacentHTML('beforeend', `<div class="panel"><div class="panel-hdr"><span class="panel-title">Weather</span><span class="panel-sub">point readings at named stations</span></div>${freshStrip(wst.parts, weatherState==='idle'||weatherState==='loading' ? null : wst.stale)}`);
+  setMetaLines('weather-meta');
+  root.insertAdjacentHTML('beforeend', `<div class="panel"><div class="panel-hdr"><span class="panel-title">Weather</span>${weatherProv()}</div>`);
   if(WEATHER_DATA){
-    root.insertAdjacentHTML('beforeend', `<div class="tbl-wrap">${buildWeatherTable()}</div>`);
+    root.insertAdjacentHTML('beforeend', `<div class="tbl-wrap">${buildWeatherTable()}</div><p class="legend-line"><sup class="pt">*</sup> Point reading at the named station, not a provincial or state average. Outlook is an ensemble lean, not a forecast.</p>`);
   } else {
-    root.insertAdjacentHTML('beforeend', `<div style="padding:18px 0;color:var(--text3)">${weatherState==='loading' ? 'Loading station readings…' : (weatherState==='failed' ? 'Weather readings: not available' : 'Station readings load when this page is opened.')}</div>`);
+    root.insertAdjacentHTML('beforeend', `<div style="padding:14px 16px;color:var(--text3)">${weatherState==='loading' ? 'Loading station readings…' : (weatherState==='failed' ? 'Weather readings: not available' : 'Station readings load when this page is opened.')}</div>`);
   }
   root.insertAdjacentHTML('beforeend', `</div>`);
-  root.insertAdjacentHTML('beforeend', `<div style="font-size:11px;color:var(--text3);margin:8px 0 0">${buildWeatherFootnote()}</div>`);
-
-  root.insertAdjacentHTML('beforeend', `<div class="panel" style="margin-top:28px"><div class="panel-hdr"><span class="panel-title">Crop calendar</span><span class="panel-sub">static reference</span></div>${freshStrip(['Source release: not available','Last fetch: not available','Not a live feed'], null)}<div style="font-size:11px;color:var(--text3);margin:10px 16px"><span style="background:rgba(46,143,82,.30);padding:1px 6px;border-radius:2px">P</span> Planting &nbsp; <span style="background:rgba(230,180,20,.40);padding:1px 6px;border-radius:2px">H</span> Harvest — standard reference windows, not live data. Actual dates shift with weather and with the area inside each country.</div><div class="tbl-wrap">${buildCropCalendarTable()}</div></div>`);
+  root.insertAdjacentHTML('beforeend', `<div class="panel" style="margin-top:22px"><div class="panel-hdr"><span class="panel-title">Crop calendar</span>${provMark(['Static reference windows published by USDA-FAS, IGC and trade references.','Release: not available','Last fetch: not available','Not a live feed.'], null)}</div><p class="legend-line"><span style="background:rgba(46,143,82,.30);padding:0 5px">P</span> planting <span style="background:rgba(230,180,20,.40);padding:0 5px">H</span> harvest. Dates shift with weather and within each country.</p><div class="tbl-wrap">${buildCropCalendarTable()}</div></div>`);
 }
 renderWeatherPage();   // the crop calendar is static, so draw the page right away; the weather table fills in when its data arrives
 </script>
@@ -2396,9 +2384,9 @@ function renderExports(){
     exportsCommodity = commodities[0];
   }
 
-  root.insertAdjacentHTML('beforeend', `<div class="panel"><div class="panel-hdr"><span class="panel-title">Commodity summary</span><span class="panel-sub">YTD vs prior year — click a row for the detail</span></div>${freshStrip(st.parts, st.stale)}${buildExportsSummaryTable()}</div>`);
+  const expNote = [...st.parts, 'Metric tons (cotton: running bales). Current marketing year.', 'Net sales are new sales this week, net of cancellations. Outstanding is sold and not yet shipped. Accumulated exports are shipped year to date. Total commitment is accumulated plus outstanding.'];
+  root.insertAdjacentHTML('beforeend', `<div class="panel"><div class="panel-hdr"><span class="panel-title">Commodity summary</span><span class="panel-sub">click a row for detail</span>${provMark(expNote, st.stale)}</div>${buildExportsSummaryTable()}</div>`);
   root.insertAdjacentHTML('beforeend', `<div id="exports-detail"></div>`);
-  root.insertAdjacentHTML('beforeend', `<div class="page-footnote">Metric tons (cotton: running bales); current marketing year only. Net Sales = new sales this week, net of cancellations · Outstanding = sold, not yet shipped · Accum. Exports = shipped YTD · Total Commitment = Accum. + Outstanding. Week over Week lists each weekly report, newest first.</div>`);
 
   // click a commodity in the summary to switch the detail below (no re-render of the page, so nothing jumps)
   root.querySelectorAll('.exp-table tr.exp-click').forEach(tr=>{
@@ -2416,7 +2404,7 @@ function renderExportsDetail(){
     ? `Week over Week — ${exportsCommodity}`
     : `By Country — ${exportsCommodity} — Largest to Smallest`;
   const st = exportsStatus();
-  let html = `<div class="panel" style="margin-top:22px"><div class="panel-hdr"><span class="panel-title">${title}</span></div>${freshStrip(st.parts, st.stale)}`;
+  let html = `<div class="panel" style="margin-top:22px"><div class="panel-hdr"><span class="panel-title">${title}</span>${provMark(st.parts, st.stale)}</div>`;
   html += `<div class="toggle" style="display:inline-flex;margin:14px 0"><button class="tbtn exp-view-btn${exportsView==='country'?' active':''}" data-v="country">Country Breakdown</button><button class="tbtn exp-view-btn${exportsView==='wow'?' active':''}" data-v="wow">Week over Week</button></div>`;
   html += exportsView === 'wow' ? buildExportsWowTable(exportsCommodity) : buildExportsCountryTable(exportsCommodity);
   html += `</div>`;
@@ -2614,7 +2602,7 @@ function buildOilBalanceTable(yearDataFn, years, includeYoy, allYearsFull, world
 }
 
 function vegoilPanelWrap(title, sub, innerHtml){
-  return `<div class="panel"><div class="panel-hdr"><span class="panel-title">${title}</span><span class="panel-sub">${sub}</span></div>${usdaFreshStrip()}${innerHtml}</div>`;
+  return `<div class="panel"><div class="panel-hdr"><span class="panel-title">${title}</span>${sub?`<span class="panel-sub">${sub}</span>`:''}${usdaProv()}</div>${innerHtml}</div>`;
 }
 
 function renderVegoilsInto(root){
@@ -2650,7 +2638,6 @@ function renderVegoilsInto(root){
       buildOilBalanceTable(y=>(countries[p.country]||{})[y], oilYears7, true, oilYears, false)));
   });
   root.appendChild(stack);
-  root.insertAdjacentHTML('beforeend', STU_NOTE);
 }
 
 // ---------------- MEAL COMPLEX (Soybean / Rapeseed / Sunflower meal) ----------------
@@ -2694,7 +2681,6 @@ function renderMealInto(root){
       buildOilBalanceTable(y=>(countries[p.country]||{})[y], mealYears7, true, mealYears, false)));
   });
   root.appendChild(stack);
-  root.insertAdjacentHTML('beforeend', STU_NOTE);
 }
 </script>
 </body>
