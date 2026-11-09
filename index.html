@@ -55,19 +55,19 @@ body.light{
 .tbl-wrap{max-width:100%}
 .bal-table,.oil-table,.summary-table,.weather-table,.cal-table,.cftc-table,.exp-table,.seas-table{width:100%;max-width:100%;table-layout:fixed;border-collapse:collapse}
 .bal-table{border:1px solid var(--border2);background:var(--bg)}
-.bal-table th{background:var(--th-bg);padding:4px 3px;text-align:right;font-size:11px;font-weight:800;letter-spacing:.02em;color:var(--text2);border-bottom:2px solid var(--border2);white-space:normal;overflow-wrap:anywhere}
+.bal-table th{background:var(--th-bg);padding:4px 3px;text-align:right;letter-spacing:.02em;color:var(--text2);border-bottom:2px solid var(--border2);white-space:normal;overflow-wrap:anywhere}
 .bal-table th:first-child{text-align:left;letter-spacing:.04em}
 .bal-table th.latest{color:var(--amber);font-weight:900;border-bottom:2px solid var(--amber)}
 .bal-table th.yoy{color:var(--text3);font-style:italic}
-.bal-table td{padding:3px 3px;text-align:right;font-size:12px;font-weight:600;border-bottom:1px solid var(--border);color:var(--text2);white-space:normal;overflow-wrap:anywhere;background:var(--bg)}
+.bal-table td{padding:3px 3px;text-align:right;border-bottom:1px solid var(--border);color:var(--text2);white-space:normal;overflow-wrap:anywhere;background:var(--bg)}
 .bal-table td:first-child{text-align:left;color:var(--text);font-weight:700}
 td.latest{color:var(--amber) !important;font-weight:800 !important}
-.row-section td{background:var(--section-bg);color:var(--text3) !important;font-size:12px !important;font-weight:900;letter-spacing:.12em;text-transform:uppercase;padding:5px 10px 4px;border-top:1px solid var(--border2)}
+.row-section td{background:var(--section-bg);color:var(--text3) !important;letter-spacing:.08em;text-transform:uppercase;padding:5px 10px 4px;border-top:1px solid var(--border2)}
 .row-alt td{background:var(--row-alt) !important}
-.row-total td{font-weight:800;font-size:16px !important;color:var(--amber) !important}
-.row-ending td{font-weight:900;font-size:16px !important;color:var(--text) !important;background:var(--row-latest) !important}
-.row-stu td{font-style:italic;color:var(--amber) !important;font-size:15px !important}
-.row-pctile td{font-style:italic;font-size:13px !important;border-bottom:2px solid var(--border2)}
+.row-total td{color:var(--amber) !important}
+.row-ending td{color:var(--text) !important;background:var(--row-latest) !important}
+.row-stu td{color:var(--amber) !important}
+.row-pctile td{border-bottom:2px solid var(--border2)}
 td.pctile-tight{color:var(--red) !important;font-weight:800 !important}
 td.pctile-loose{color:var(--green) !important;font-weight:800 !important}
 td.pctile-mid{color:var(--text3) !important}
@@ -459,7 +459,7 @@ function buildBalanceTable(comm, yearDataFn, years, includeYoy, allYearsFull, wo
   const colW = [3.4];
   years.forEach(()=>colW.push(1));
   if(includeYoy) colW.push(1.05, 1.45, 1.05);
-  let html = `<div class="tbl-wrap"><table class="bal-table">${fitColgroup(colW)}<thead><tr><th>ITEM</th>`;
+  let html = `<div class="tbl-wrap"><table class="term-table bal-table">${fitColgroup(colW)}<thead><tr><th>ITEM</th>`;
   for(const y of years) html += `<th class="${y===latestYear?'latest':''}">${y}</th>`;
   if(includeYoy) html += `<th class="yoy">YoY Δ</th><th class="yoy grp-l">${priorHeader()}</th><th class="yoy">Chg</th>`;
   html += `</tr></thead><tbody>`;
@@ -539,7 +539,7 @@ function buildMetricByCountryTable(countryList, countries, years, metric){
   const colW = [2.6];
   years.forEach(()=>colW.push(1));
   colW.push(1.05, 1.45, 1.05);
-  let html = `<div class="tbl-wrap"><table class="bal-table">${fitColgroup(colW)}<thead><tr><th>Country</th>`;
+  let html = `<div class="tbl-wrap"><table class="term-table bal-table">${fitColgroup(colW)}<thead><tr><th>Country</th>`;
   years.forEach(y=>{ html += `<th class="${y===latestYear?'latest':''}">${y}</th>`; });
   html += `<th class="yoy">YoY Δ</th><th class="yoy grp-l">${priorHeader()}</th><th class="yoy">Chg</th>`;
   html += `</tr></thead><tbody>`;
@@ -936,12 +936,12 @@ fetch('data/psd_data.json')
 
 <style>
 .cftc-table{border:1px solid var(--border2);background:var(--bg)}
-.cftc-table th{background:var(--th-bg);padding:4px 2px;text-align:right;font-size:11px;font-weight:900;letter-spacing:.01em;color:var(--text);border-bottom:2px solid var(--border2);white-space:normal;overflow-wrap:anywhere}
+.cftc-table th{background:var(--th-bg);padding:4px 2px;text-align:right;letter-spacing:.01em;color:var(--text);border-bottom:2px solid var(--border2);white-space:normal;overflow-wrap:anywhere}
 .cftc-table th:first-child{text-align:left}
-.cftc-row-section td{background:var(--section-bg);color:var(--amber) !important;font-size:13px !important;font-weight:900 !important;letter-spacing:.16em;text-transform:uppercase;padding:8px 10px 6px;border-top:2px solid var(--amber)}
-.cftc-table td{padding:3px 2px;text-align:right;font-size:12px;font-weight:600;border-bottom:1px solid var(--border);color:var(--text2);white-space:normal;overflow-wrap:anywhere;background:var(--bg)}
+.cftc-row-section td{background:var(--section-bg);color:var(--amber) !important;letter-spacing:.08em;text-transform:uppercase;padding:6px 8px 4px;border-top:2px solid var(--amber)}
+.cftc-table td{padding:3px 2px;text-align:right;border-bottom:1px solid var(--border);color:var(--text2);white-space:normal;overflow-wrap:anywhere;background:var(--bg)}
 .cftc-table td:first-child{text-align:left;color:var(--text);font-weight:700}
-.cftc-note{margin-left:12px;font-size:11px !important;font-weight:600 !important;letter-spacing:.04em !important;text-transform:none !important;color:var(--text3) !important}
+.cftc-note{margin-left:8px;letter-spacing:.02em !important;text-transform:none !important;color:var(--text3) !important}
 .cftc-scale{transform-origin:0 0}
 .cftc-table tr.cftc-click{cursor:pointer}
 .cftc-table tr.cftc-click:hover td{background-image:linear-gradient(rgba(128,128,128,.10),rgba(128,128,128,.10))}
@@ -960,10 +960,10 @@ fetch('data/psd_data.json')
 .cftc-legend .lg-r{background:rgba(192,57,43,.35)}
 .cftc-legend .lg-dash{width:18px;height:0;border-top:1.5px dashed var(--ref-color)}
 .rf,.gf{display:block;min-width:0;text-align:right}
-.rp,.gc{display:block;min-width:0;margin:0;text-align:right;font-size:10px;font-weight:600}
+.rp,.gc{display:block;min-width:0;margin:0;text-align:right}
 .cftc-table td.cftc-ref{color:var(--ref-color);font-style:italic;font-weight:600;background:var(--ref-bg)}
 .cftc-table th.cftc-ref-h{color:var(--ref-color) !important;font-style:italic;background:var(--ref-bg)}
-.cftc-ref-sub{display:block;font-size:10px;font-weight:600;letter-spacing:.04em;text-transform:none}
+.cftc-ref-sub{display:block;letter-spacing:.02em;text-transform:none}
 .gc{font-weight:700}
 .rp{opacity:.85}
 .cftc-up{color:var(--green) !important}
@@ -974,20 +974,20 @@ fetch('data/psd_data.json')
 #cftc-err{padding:40px;text-align:center;color:var(--red);font-size:14px}
 .cal-table{border:1px solid var(--border2);background:var(--bg)}
 .weather-table{border:1px solid var(--border2);background:var(--bg)}
-.weather-table th{background:var(--th-bg);padding:4px 3px;text-align:right;font-size:11px;font-weight:900;letter-spacing:.02em;color:var(--text);border-bottom:2px solid var(--border2);white-space:normal;overflow-wrap:anywhere}
+.weather-table th{background:var(--th-bg);padding:4px 3px;text-align:right;letter-spacing:.02em;color:var(--text);border-bottom:2px solid var(--border2);white-space:normal;overflow-wrap:anywhere}
 .weather-table th:first-child{text-align:left}
-.weather-table td{padding:3px 3px;text-align:right;font-size:12px;font-weight:600;border-bottom:1px solid var(--border);color:var(--text2);white-space:normal;overflow-wrap:anywhere;background:var(--bg)}
+.weather-table td{padding:3px 3px;text-align:right;border-bottom:1px solid var(--border);color:var(--text2);white-space:normal;overflow-wrap:anywhere;background:var(--bg)}
 .weather-table td:first-child{text-align:left;color:var(--text);font-weight:700}
 .summary-table{border:1px solid var(--border2);background:var(--bg)}
 /* group divider: the first column of each group gets a heavier left line, running the full height of the table */
 .grp-l{border-left:2px solid var(--grp-line)}
-.summary-table th{background:var(--th-bg);padding:4px 3px;text-align:right;font-size:11px;font-weight:900;letter-spacing:.02em;color:var(--text);border-bottom:2px solid var(--border2);white-space:normal;overflow-wrap:anywhere}
+.summary-table th{background:var(--th-bg);padding:4px 3px;text-align:right;letter-spacing:.02em;color:var(--text);border-bottom:2px solid var(--border2);white-space:normal;overflow-wrap:anywhere}
 .summary-table th:first-child{text-align:left}
-.summary-table td{padding:3px 3px;text-align:right;font-size:12px;font-weight:600;border-bottom:1px solid var(--border);color:var(--text2);white-space:normal;overflow-wrap:anywhere;background:var(--bg)}
+.summary-table td{padding:3px 3px;text-align:right;border-bottom:1px solid var(--border);color:var(--text2);white-space:normal;overflow-wrap:anywhere;background:var(--bg)}
 .summary-table td:first-child{text-align:left;color:var(--text);font-weight:700}
-.cal-table th{background:var(--th-bg);padding:4px 2px;text-align:center;font-size:11px;font-weight:900;letter-spacing:.02em;color:var(--text);border-bottom:2px solid var(--border2);white-space:normal}
+.cal-table th{background:var(--th-bg);padding:4px 2px;text-align:center;letter-spacing:.02em;color:var(--text);border-bottom:2px solid var(--border2);white-space:normal}
 .cal-table th:first-child{text-align:left}
-.cal-table td{padding:3px 2px;text-align:center;font-size:12px;font-weight:600;border-bottom:1px solid var(--border);color:var(--text2);background:var(--bg);white-space:normal}
+.cal-table td{padding:3px 2px;text-align:center;border-bottom:1px solid var(--border);color:var(--text2);background:var(--bg);white-space:normal}
 .cal-table td:first-child{text-align:left;color:var(--text);font-weight:700;overflow-wrap:anywhere}
 .cal-cur-month{box-shadow:inset 0 0 0 2px var(--amber) !important}
 th.cal-cur-month{color:var(--amber) !important}
@@ -1250,11 +1250,11 @@ function buildCftcRow(entry, hist){
 const CFTC_COL_WIDTHS = [13, 7.2, 7.2, 6.4, 5.6, 8.2, 8.2, 8.2, 7.2, 7.2, 7.2, 7.2, 7.2];
 function buildCftcMasterTable(){
   const yrs = CFTC_DATA._meta?.years_history;
-  let html = `<div class="tbl-wrap"><table class="cftc-table"><colgroup>${CFTC_COL_WIDTHS.map(w=>`<col style="width:${w}%">`).join('')}</colgroup><thead>`;
+  let html = `<div class="tbl-wrap"><table class="term-table cftc-table"><colgroup>${CFTC_COL_WIDTHS.map(w=>`<col style="width:${w}%">`).join('')}</colgroup><thead>`;
   html += `<tr><th rowspan="2">Product</th>`;
   CFTC_COL_GROUPS.forEach(g=>{
     const label = g.ref ? `${g.label}<span class="cftc-ref-sub">${yrs ? yrs+'yr · ' : ''}contracts</span>` : g.label;
-    html += `<th colspan="${g.cols.length}" class="grp-l${g.ref?' cftc-ref-h':''}" style="text-align:center;${g.ref?'':'color:var(--amber);'}font-size:13px;letter-spacing:.08em">${label}</th>`;
+    html += `<th colspan="${g.cols.length}" class="grp-l${g.ref?' cftc-ref-h':''}" style="text-align:center;${g.ref?'':'color:var(--amber);'}letter-spacing:.06em">${label}</th>`;
   });
   html += `</tr><tr>`;
   CFTC_COL_GROUPS.forEach(g=>{
@@ -1734,9 +1734,9 @@ function buildSummaryTable(){
   const productWidth = 17;
 
   const pcts = colPercents([productWidth, ...groups.flatMap(g=>g.cols.map(c=>c.w))]);
-  let html = `<div class="tbl-wrap"><table class="summary-table"><colgroup>${pcts.map(pc=>`<col style="width:${pc}">`).join('')}`;
+  let html = `<div class="tbl-wrap"><table class="term-table summary-table"><colgroup>${pcts.map(pc=>`<col style="width:${pc}">`).join('')}`;
   html += `</colgroup><thead><tr><th rowspan="2">Product</th>`;
-  groups.forEach(g=>{ html += `<th colspan="${g.cols.length}" class="grp-l" style="text-align:center;color:var(--amber);font-size:13px;letter-spacing:.08em">${g.label}</th>`; });
+  groups.forEach(g=>{ html += `<th colspan="${g.cols.length}" class="grp-l" style="text-align:center;color:var(--amber);letter-spacing:.06em">${g.label}</th>`; });
   html += `</tr><tr>`;
   groups.forEach(g=>{
     g.cols.forEach((c,i)=>{ html += `<th${i===0?' class="grp-l"':''}>${c.l}</th>`; });
@@ -1882,7 +1882,7 @@ function escHtml(t){ return String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;')
 function fmtPctNormalWithMm(v, mm){
   const pct = fmtPctNormal(v);
   if(mm===null||mm===undefined||isNaN(mm)) return pct;
-  return `${pct} <span style="color:var(--text3);font-size:10px">(${Math.round(mm)}mm)</span>`;
+  return `${pct} <span style="color:var(--text3)">(${Math.round(mm)}mm)</span>`;
 }
 function fmtHiLo(hi, lo){
   if((hi===null||hi===undefined||isNaN(hi)) && (lo===null||lo===undefined||isNaN(lo))) return '—';
@@ -1943,9 +1943,9 @@ function buildWeatherTable(){
   }
   const totalCols = 1 + groups.reduce((sum,g)=>sum+g.cols.length,0);
   const pcts = colPercents([23, ...groups.flatMap(g=>g.cols.map(c=>c.w))]);
-  let html = `<table class="weather-table"><colgroup>${pcts.map(pc=>`<col style="width:${pc}">`).join('')}`;
+  let html = `<table class="term-table weather-table"><colgroup>${pcts.map(pc=>`<col style="width:${pc}">`).join('')}`;
   html += `</colgroup><thead><tr><th rowspan="2" style="text-align:left">Station</th>`;
-  groups.forEach(g=>{ html += `<th colspan="${g.cols.length}" class="grp-l" style="text-align:center;color:var(--amber);font-size:12px;letter-spacing:.08em">${g.label}</th>`; });
+  groups.forEach(g=>{ html += `<th colspan="${g.cols.length}" class="grp-l" style="text-align:center;color:var(--amber);letter-spacing:.06em">${g.label}</th>`; });
   html += `</tr><tr>`;
   groups.forEach(g=>{
     g.cols.forEach((c,i)=>{ html += `<th${i===0?' class="grp-l"':''}>${c.l}</th>`; });
@@ -1985,7 +1985,7 @@ function buildCropCalendarTable(){
   const curMonth = new Date().getMonth() + 1; // 1-12
 
   const calPcts = colPercents([20, ...CAL_MONTHS.map(()=>80/CAL_MONTHS.length)]);
-  let html = `<table class="cal-table"><colgroup>${calPcts.map(pc=>`<col style="width:${pc}">`).join('')}`;
+  let html = `<table class="term-table cal-table"><colgroup>${calPcts.map(pc=>`<col style="width:${pc}">`).join('')}`;
   html += `</colgroup><thead><tr><th style="text-align:left">Origin</th>`;
   CAL_MONTHS.forEach((m,i)=>{
     const isCur = (i+1)===curMonth;
@@ -2062,11 +2062,11 @@ renderWeatherPage();   // the crop calendar is static, so draw the page right aw
 
 <style>
 .seas-table{background:var(--bg)}
-.seas-table th{padding:4px 2px;text-align:center;font-size:11px;font-weight:800;color:var(--text);background:var(--th-bg);border:1px solid var(--border2);white-space:normal;overflow-wrap:anywhere}
-.seas-table td{padding:3px 2px;text-align:center;font-size:12px;font-weight:700;color:#111;border:1px solid var(--border);white-space:normal}
+.seas-table th{padding:4px 2px;text-align:center;color:var(--text);background:var(--th-bg);border:1px solid var(--border2);white-space:normal;overflow-wrap:anywhere}
+.seas-table td{padding:3px 2px;text-align:center;color:#111;border:1px solid var(--border);white-space:normal}
 .seas-table td.seas-label{text-align:left;font-weight:700;color:var(--text);background:var(--bg)}
 .seas-table th.seas-label-h{text-align:left;background:var(--th-bg)}
-.seas-section-row td{background:var(--section-bg) !important;color:var(--amber) !important;font-weight:900;text-transform:uppercase;font-size:12px;letter-spacing:.08em;text-align:left;position:sticky;left:0}
+.seas-section-row td{background:var(--section-bg) !important;color:var(--amber) !important;text-transform:uppercase;letter-spacing:.08em;text-align:left}
 </style>
 <script>
 const SEASONALS_WEEKS = ["Dec 29","Jan 05","Jan 12","Jan 19","Jan 26","Feb 02","Feb 09","Feb 16","Feb 23","Mar 02","Mar 09","Mar 16","Mar 23","Mar 30","Apr 06","Apr 13","Apr 20","Apr 27","May 04","May 11","May 18","May 25","Jun 01","Jun 08","Jun 15","Jun 22","Jun 29","Jul 06","Jul 13","Jul 20","Jul 27","Aug 03","Aug 10","Aug 17","Aug 24","Aug 31","Sep 07","Sep 14","Sep 21","Sep 28","Oct 05","Oct 12","Oct 19","Oct 26","Nov 02","Nov 09","Nov 16","Nov 23","Nov 30","Dec 07","Dec 14","Dec 21","Dec 28"];
@@ -2179,7 +2179,7 @@ function seasonalsWindowState(startMonth){
 }
 function buildSeasonalsTable(startMonth){
   const cols = seasWindow(startMonth).cols;   // rolling quarter: selected month + next 2 (wraps at year end)
-  let html = `<table class="seas-table">${fitColgroup([2.6, ...cols.map(()=>1)])}<thead><tr><th class="seas-label-h">Product</th>`;
+  let html = `<table class="term-table seas-table">${fitColgroup([2.6, ...cols.map(()=>1)])}<thead><tr><th class="seas-label-h">Product</th>`;
   cols.forEach(o=>{ html += `<th>${o.w}</th>`; });
   html += `</tr></thead><tbody>`;
 
@@ -2228,9 +2228,9 @@ renderSeasonals();
 
 <style>
 .exp-table{border:1px solid var(--border2);background:var(--bg)}
-.exp-table th{background:var(--th-bg);padding:4px 3px;text-align:right;font-size:11px;font-weight:900;letter-spacing:.02em;color:var(--text);border-bottom:2px solid var(--border2);white-space:normal;overflow-wrap:anywhere}
+.exp-table th{background:var(--th-bg);padding:4px 3px;text-align:right;letter-spacing:.02em;color:var(--text);border-bottom:2px solid var(--border2);white-space:normal;overflow-wrap:anywhere}
 .exp-table th:first-child{text-align:left}
-.exp-table td{padding:3px 3px;text-align:right;font-size:12px;font-weight:600;border-bottom:1px solid var(--border);color:var(--text2);white-space:normal;overflow-wrap:anywhere;background:var(--bg)}
+.exp-table td{padding:3px 3px;text-align:right;border-bottom:1px solid var(--border);color:var(--text2);white-space:normal;overflow-wrap:anywhere;background:var(--bg)}
 .exp-table td:first-child{text-align:left;color:var(--text);font-weight:700}
 .exp-table td.prior{color:var(--text3)}
 .exp-table tr.exp-total td{background:var(--section-bg);color:var(--text);font-weight:900}
@@ -2242,7 +2242,7 @@ renderSeasonals();
 .exp-table tr.exp-sel td:first-child{color:var(--amber);box-shadow:inset 3px 0 0 var(--amber)}
 .exp-hint{margin-left:12px;font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:none;color:var(--text3)}
 .exp-cap{font-size:12px;color:var(--text3);margin:0 0 8px}
-.exp-row-section td{background:var(--section-bg);color:var(--amber) !important;font-size:13px !important;font-weight:900 !important;letter-spacing:.16em;text-transform:uppercase;padding:8px 10px 6px;border-top:2px solid var(--amber)}
+.exp-row-section td{background:var(--section-bg);color:var(--amber) !important;letter-spacing:.08em;text-transform:uppercase;padding:6px 8px 4px;border-top:2px solid var(--amber)}
 #exports-err{padding:40px;text-align:center;color:var(--red);font-size:14px}
 </style>
 <script>
@@ -2267,7 +2267,7 @@ function buildExportsSummaryTable(){
     {label:'Accum. Exports YoY'},
     {label:'Total Commitment YoY'},
   ];
-  let html = `<table class="exp-table">${fitColgroup([2.2,1,1,1.15,1.15,1,1])}<thead><tr><th>Commodity</th>`;
+  let html = `<table class="term-table exp-table">${fitColgroup([2.2,1,1,1.15,1.15,1,1])}<thead><tr><th>Commodity</th>`;
   cols.forEach(c=>{ html += `<th>${c.label}</th>`; });
   html += `</tr></thead><tbody>`;
 
@@ -2312,7 +2312,7 @@ function buildExportsWowTable(commName){
   if(n < 4) cap += ' — more weeks appear as each weekly report is collected';
 
   const cols = ['Net Sales (Wk)','Outstanding Sales','Accum. Exports (YTD)','Total Commitment','Accum. Exports YoY','Total Commitment YoY'];
-  let html = `<div class="exp-cap">${cap}</div><table class="exp-table">${fitColgroup([1.3,1,1,1.15,1.15,1,1])}<thead><tr><th>Week Ending</th>`;
+  let html = `<div class="exp-cap">${cap}</div><table class="term-table exp-table">${fitColgroup([1.3,1,1,1.15,1.15,1,1])}<thead><tr><th>Week Ending</th>`;
   cols.forEach(c=>{ html += `<th>${c}</th>`; });
   html += `</tr></thead><tbody>`;
 
@@ -2345,7 +2345,7 @@ function buildExportsCountryTable(commName){
     {label:'Accum. Exports YoY'},
     {label:'Total Commitment YoY'},
   ];
-  let html = `<table class="exp-table">${fitColgroup([1.8,1,1,1.15,1.15,1,1])}<thead><tr><th>Country</th>`;
+  let html = `<table class="term-table exp-table">${fitColgroup([1.8,1,1,1.15,1.15,1,1])}<thead><tr><th>Country</th>`;
   cols.forEach(c=>{ html += `<th>${c.label}</th>`; });
   html += `</tr></thead><tbody>`;
 
@@ -2440,11 +2440,11 @@ fetch('data/export_sales.json')
 
 <style>
 .oil-table{border:1px solid var(--border2);background:var(--bg)}
-.oil-table th{background:var(--th-bg);padding:4px 3px;text-align:right;font-size:11px;font-weight:800;letter-spacing:.02em;color:var(--text2);border-bottom:2px solid var(--border2);white-space:normal;overflow-wrap:anywhere}
+.oil-table th{background:var(--th-bg);padding:4px 3px;text-align:right;letter-spacing:.02em;color:var(--text2);border-bottom:2px solid var(--border2);white-space:normal;overflow-wrap:anywhere}
 .oil-table th:first-child{text-align:left;letter-spacing:.04em}
 .oil-table th.latest{color:var(--amber);font-weight:900;border-bottom:2px solid var(--amber)}
 .oil-table th.yoy{color:var(--text3);font-style:italic}
-.oil-table td{padding:3px 3px;text-align:right;font-size:12px;font-weight:600;border-bottom:1px solid var(--border);color:var(--text2);white-space:normal;overflow-wrap:anywhere;background:var(--bg)}
+.oil-table td{padding:3px 3px;text-align:right;border-bottom:1px solid var(--border);color:var(--text2);white-space:normal;overflow-wrap:anywhere;background:var(--bg)}
 .oil-table td:first-child{text-align:left;color:var(--text);font-weight:700}
 #vegoils-err{padding:40px;text-align:center;color:var(--red);font-size:14px}
 </style>
@@ -2554,7 +2554,7 @@ function buildOilBalanceTable(yearDataFn, years, includeYoy, allYearsFull, world
   const colW = [3.4];
   years.forEach(()=>colW.push(1));
   if(includeYoy) colW.push(1.05, 1.45, 1.05);
-  let html = `<div class="tbl-wrap"><table class="oil-table">${fitColgroup(colW)}<thead><tr><th>ITEM</th>`;
+  let html = `<div class="tbl-wrap"><table class="term-table oil-table">${fitColgroup(colW)}<thead><tr><th>ITEM</th>`;
   years.forEach(y=>{ html += `<th class="${y===latestYear?'latest':''}">${y}</th>`; });
   if(includeYoy) html += `<th class="yoy">YoY Δ</th><th class="yoy grp-l">${priorHeader()}</th><th class="yoy">Chg</th>`;
   html += `</tr></thead><tbody>`;
@@ -2683,5 +2683,6 @@ function renderMealInto(root){
   root.appendChild(stack);
 }
 </script>
+<link rel="stylesheet" href="terminal-tables.css">
 </body>
 </html>
